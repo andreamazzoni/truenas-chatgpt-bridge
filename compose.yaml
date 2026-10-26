@@ -1,0 +1,46 @@
+name: truenas-chatgpt-bridge
+services:
+  bridge:
+    image: ${BRIDGE_IMAGE:-truenas-chatgpt-bridge:0.1.0}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never
+    init: true
+    user: "${BRIDGE_UID:-1000}:${BRIDGE_GID:-1000}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    pids_limit: 128
+    mem_limit: 768m
+    cpus: 2
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=${BRIDGE_UID:-1000},gid=${BRIDGE_GID:-1000},mode=0700
+    volumes:
+      - type: bind
+        source: ./config/local
+        target: /etc/bridge
+        read_only: true
+        bind:
+          create_host_path: false
+    secrets:
+      - openai_api_key
+      - truenas_api_key
+    healthcheck:
+      test: [CMD, python, /opt/bridge/runtime.py, health]
+      interval: 60s
+      timeout: 35s
+      start_period: 45s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+secrets:
+  openai_api_key:
+    file: ./secrets/openai_api_key
+  truenas_api_key:
+    file: ./secrets/truenas_api_key

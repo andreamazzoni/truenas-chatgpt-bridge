@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "images": {
+    "python": "python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f",
+    "go": "golang:1.25.12-bookworm@sha256:6359592445455f2dbe2412bed411336035bc019a50017720d77454ffdd6d0f82"
+  },
+  "tunnel": {
+    "version": "0.0.18",
+    "commit": "274a5588414819f063d27100a4fb1096aae3830f",
+    "artifacts": {
+      "arm64": {
+        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.18/tunnel-client-v0.0.18-linux-arm64.zip",
+        "sha256": "a5f3d70efc75f5e66ab5c67c44d272aa80b2736f93f875f165140517750ec035"
+      },
+      "amd64": {
+        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.18/tunnel-client-v0.0.18-linux-amd64.zip",
+        "sha256": "3c82307316acd93c88a384b62af1d81d3f4cb0efa975f9c0bfaef922866a04c4"
+      }
+    }
+  },
+  "truenas": {
+    "version": "0.0.6",
+    "commit": "542e59d0f8b2909fe25cbc29ea23c7908fd2f6d7",
+    "url": "https://codeload.github.com/truenas/truenas-mcp/tar.gz/542e59d0f8b2909fe25cbc29ea23c7908fd2f6d7",
+    "sha256": "83a7dbf6a96c670026ba3fe32523aafa58da60571f6792a1ad0e791682331e1b"
+  }
+}

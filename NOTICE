@@ -1,0 +1,14 @@
+truenas-chatgpt-bridge
+Copyright 2026 truenas-chatgpt-bridge contributors
+
+Bridge code is licensed under GPL-3.0-only; see LICENSE.
+This project is independent of, and not endorsed by, TrueNAS or OpenAI.
+
+It packages the unmodified official TrueNAS MCP v0.0.6 (GPLv3) and
+OpenAI tunnel-client v0.0.18 (Apache-2.0) as separate executables.
+Upstream license texts and OpenAI NOTICE are in licenses/.
+Images contain upstream binary notices, dependency license inventory and SBOM
+for tunnel-client, and complete vendored TrueNAS build source (including the
+bridge health adapter) under /usr/share/bridge/.
+
+See docs/licensing.md before redistributing images.
