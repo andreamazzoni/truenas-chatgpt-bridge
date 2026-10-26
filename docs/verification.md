@@ -17,7 +17,7 @@ The following records distinguish local fixture checks from real-service cutover
 | Candidate replacement and retained-image rollback | Passed using the actual host update/rollback functions and exact previous image ID |
 | Credential exclusion from build context, image and tracked files | Passed tracked-path/token-pattern scan, ignored canary rebuild and scan of every exported image layer; no real credentials supplied |
 | Real tunnel polling and read-only NAS call after cutover | Passed after operator-confirmed cutover; fresh polling and official-client `system.info` probe succeeded, including after container restart |
-| Personal ChatGPT plugin tool refresh and read-only call | Pending operator-assisted acceptance |
+| Personal ChatGPT plugin read-only call | Passed; operator confirmed the requested `system_info` call succeeded against the running deployment after restart |
 
 The operator confirmed stopping the previous stdio tunnel host and HTTPS on the
 proxy-to-TrueNAS hop before the real container started. Host and container TLS
@@ -27,10 +27,11 @@ a successful read-only NAS probe. A container restart returned the same checks
 to healthy. The verified image is retained under a local rollback tag, with its
 immutable ID recorded in the ignored local rollback metadata.
 
-The real `system.info` probe uses the official client's separate NAS session;
-it does not establish successful tool execution through the hosted stdio tunnel.
-That final path still requires the operator-assisted ChatGPT test below. No
-credentials, private endpoints, tunnel IDs or raw NAS results are recorded here.
+The real `system.info` probe uses the official client's separate NAS session.
+The operator subsequently confirmed the requested read-only call from ChatGPT,
+providing acceptance evidence for the full ChatGPT → hosted tunnel → stdio MCP →
+TrueNAS path. No credentials, private endpoints, tunnel IDs or raw NAS results
+are recorded here.
 
 The Docker daemon reports no memory/swap limit support on the development host.
 Compose requests a memory cap but that kernel does not enforce it. No kernel,
@@ -70,9 +71,11 @@ lessons are preserved in the setup guide: no `https://` hostname prefix, TLS on
 every proxy hop, no shared environment between terminal sessions, and tool catalog
 refresh after replacing a demo MCP with TrueNAS.
 
-## Remaining ChatGPT acceptance evidence
+## ChatGPT acceptance outcome
 
-Refresh the personal plugin's tools and verify a read-only `system_info` call
-from ChatGPT against the running deployment. Record only the non-sensitive
-outcome and any required rollback decision. Do not record keys, raw NAS
-inventories, private hostnames or tunnel identifiers here.
+After the coordinated cutover and successful container restart, the operator
+confirmed that the requested read-only `system_info` call from the personal
+ChatGPT plugin worked. This completes real-service acceptance for the deployed
+Linux ARM64 bridge. The AMD64 runtime and host memory-limit limitations recorded
+above remain unchanged; this result does not certify other TrueNAS versions or
+account/workspace configurations.
