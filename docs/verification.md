@@ -4,7 +4,7 @@ This file records observations from 2026-10-26, not a general compatibility guar
 
 ## Current implementation acceptance
 
-The following checks are performed locally before a real-service cutover:
+The following records distinguish local fixture checks from real-service cutover evidence:
 
 | Check | Status |
 | --- | --- |
@@ -13,11 +13,24 @@ The following checks are performed locally before a real-service cutover:
 | Linux AMD64 cross-build | All 3 executables built/verified as static x86-64 ELF; full runtime image blocked by Docker Hub anonymous pull quota (HTTP 429); AMD64 execution not tested |
 | Strict hostname/secret permissions and health distinction tests | 7 tests passed |
 | Official MCP stdio discovery and `system_info` against TLS fixture | Passed with official TrueNAS MCP 0.0.6 |
-| Container restart and graceful shutdown | Passed restart/retest; final tunnel exit code 0 |
+| Container restart and graceful shutdown | Offline restart/retest passed with shutdown exit code 0; real deployment also returned healthy after restart |
 | Candidate replacement and retained-image rollback | Passed using the actual host update/rollback functions and exact previous image ID |
 | Credential exclusion from build context, image and tracked files | Passed tracked-path/token-pattern scan, ignored canary rebuild and scan of every exported image layer; no real credentials supplied |
-| Real tunnel polling and read-only NAS call after cutover | Pending operator credentials and coordinated cutover |
+| Real tunnel polling and read-only NAS call after cutover | Passed after operator-confirmed cutover; fresh polling and official-client `system.info` probe succeeded, including after container restart |
 | Personal ChatGPT plugin tool refresh and read-only call | Pending operator-assisted acceptance |
+
+The operator confirmed stopping the previous stdio tunnel host and HTTPS on the
+proxy-to-TrueNAS hop before the real container started. Host and container TLS
+preflight passed without authentication. The running bridge subsequently reported
+process liveness, startup readiness, recent successful hosted tunnel polling and
+a successful read-only NAS probe. A container restart returned the same checks
+to healthy. The verified image is retained under a local rollback tag, with its
+immutable ID recorded in the ignored local rollback metadata.
+
+The real `system.info` probe uses the official client's separate NAS session;
+it does not establish successful tool execution through the hosted stdio tunnel.
+That final path still requires the operator-assisted ChatGPT test below. No
+credentials, private endpoints, tunnel IDs or raw NAS results are recorded here.
 
 The Docker daemon reports no memory/swap limit support on the development host.
 Compose requests a memory cap but that kernel does not enforce it. No kernel,
@@ -57,9 +70,9 @@ lessons are preserved in the setup guide: no `https://` hostname prefix, TLS on
 every proxy hop, no shared environment between terminal sessions, and tool catalog
 refresh after replacing a demo MCP with TrueNAS.
 
-## Remaining real acceptance evidence
+## Remaining ChatGPT acceptance evidence
 
-After the agreed cutover, record only non-sensitive outcomes: tunnel polling
-ready, `system.info` probe success, plugin tools refreshed, successful read-only
-ChatGPT result, restart/retest outcome, and rollback decision if needed. Do not
-record keys, raw NAS inventories, private hostnames or tunnel identifiers here.
+Refresh the personal plugin's tools and verify a read-only `system_info` call
+from ChatGPT against the running deployment. Record only the non-sensitive
+outcome and any required rollback decision. Do not record keys, raw NAS
+inventories, private hostnames or tunnel identifiers here.
