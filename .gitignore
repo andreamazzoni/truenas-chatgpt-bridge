@@ -1,0 +1,9 @@
+.env
+secrets/
+config/local/
+.local/
+__pycache__/
+*.pyc
+*.tar
+*.tar.gz
+*.zip

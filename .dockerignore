@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!versions.lock.json
+!build/
+!build/**
+!bridge/
+!bridge/**
+!LICENSE
+!NOTICE
+!licenses/
+!licenses/**
+**/__pycache__
+**/*.pyc
