@@ -37,6 +37,8 @@ def wait_healthy():
             state = json.loads(execute(["docker", "inspect", cid], capture=True).stdout)[0]["State"]
             if state.get("Health", {}).get("Status") == "healthy":
                 return
+            if state.get("Restarting") or state.get("Status") in ("exited", "dead"):
+                raise RuntimeError("Bridge exited during startup; inspect bounded logs before retrying")
         time.sleep(3)
     raise RuntimeError("Bridge did not become healthy within 180s; retained image is available for rollback")
 

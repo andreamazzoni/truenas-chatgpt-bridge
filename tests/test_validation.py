@@ -64,6 +64,15 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(env["TRUENAS_URL"], "wss://nas.example:8443/websocket")
         self.assertEqual(set(env), {"PATH", "HOME", "TRUENAS_URL", "TRUENAS_API_KEY"})
 
+    def test_tunnel_uses_native_file_flag_instead_of_literal_env_reference(self):
+        cfg = dict(truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
+        with patch.object(runtime, "settings", return_value=cfg), patch.object(runtime, "secret"), patch.object(runtime, "tls_check"), patch.object(runtime.Path, "mkdir"), patch.object(runtime.os, "execve", side_effect=RuntimeError("exec")) as call, patch.object(runtime.sys, "argv", ["runtime.py", "run"]):
+            with self.assertRaises(RuntimeError):
+                runtime.main()
+        _, argv, env = call.call_args.args
+        self.assertEqual(argv[-2:], ["--control-plane.api-key", "file:/run/secrets/openai_api_key"])
+        self.assertNotIn("CONTROL_PLANE_API_KEY", env)
+
 
 if __name__ == "__main__":
     unittest.main()

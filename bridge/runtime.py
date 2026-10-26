@@ -92,13 +92,13 @@ def main():
         Path("/tmp/home").mkdir(mode=0o700, exist_ok=True)
         env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp/home",
                "CONTROL_PLANE_TUNNEL_ID": cfg["tunnel_id"],
-               "CONTROL_PLANE_API_KEY": "file:/run/secrets/openai_api_key",
                "MCP_COMMAND": "python /opt/bridge/runtime.py mcp",
                "HEALTH_LISTEN_ADDR": "127.0.0.1:8080",
                "LOG_LEVEL": "info", "LOG_FORMAT": "json"}
         if cfg["organization_id"]:
             env["CONTROL_PLANE_ORGANIZATION_ID"] = cfg["organization_id"]
-        os.execve("/usr/local/bin/tunnel-client", ["tunnel-client", "run"], env)
+        os.execve("/usr/local/bin/tunnel-client", ["tunnel-client", "run",
+                  "--control-plane.api-key", "file:/run/secrets/openai_api_key"], env)
     if command in ("probe", "health"):
         report = tunnel_status()
         report["nas_probe"] = probe(cfg)

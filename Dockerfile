@@ -15,6 +15,10 @@ RUN go mod download && go mod verify && go mod vendor
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w -buildid= -X main.Version=0.0.6' -o /out/truenas-mcp ./cmd/truenas-mcp \
     && GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o /out/bridge-probe ./cmd/bridge-probe
 
+FROM scratch AS binaries
+COPY --from=compile /out/ /
+COPY --from=fetch /build/tunnel-client /tunnel-client
+
 # All RUN instructions execute on BUILDPLATFORM. Target runtime is assembled
 # with COPY only, allowing AMD64 image builds on ARM64 without QEMU.
 FROM python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f AS runtime

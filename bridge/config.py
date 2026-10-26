@@ -50,7 +50,7 @@ def endpoint(value):
 
 def settings(path):
     cfg = json.loads(Path(path).read_text())
-    if set(cfg) != {"truenas_host", "tunnel_id", "ca_file", "organization_id"}:
+    if not isinstance(cfg, dict) or set(cfg) != {"truenas_host", "tunnel_id", "ca_file", "organization_id"}:
         raise ConfigError("Unexpected or missing settings fields; run setup")
     endpoint(cfg["truenas_host"])
     if not isinstance(cfg["tunnel_id"], str) or not re.fullmatch(r"tunnel_[a-z0-9]{32}", cfg["tunnel_id"]):
@@ -82,6 +82,8 @@ def secret(path, *, read=True):
     if not 1 <= mode.st_size <= 4096:
         raise ConfigError("Credential file has an invalid size")
     if not read:
+        with path.open("rb"):
+            pass  # Validate access as the current container/host user.
         return None
     value = path.read_text().rstrip("\n")
     if not value or not value.isascii() or any(c.isspace() or ord(c) < 33 or ord(c) > 126 for c in value):

@@ -65,13 +65,18 @@ def main():
     print("Reuse the existing tunnel and keys. Secrets are entered here with echo disabled.")
     cfg = {"truenas_host": prompt("TrueNAS hostname or IP (no scheme/path; optional :port)", old.get("truenas_host", "")),
            "tunnel_id": prompt("Existing OpenAI tunnel ID", old.get("tunnel_id", "")),
-           "organization_id": prompt("Platform organization ID (optional)", old.get("organization_id", "")),
+           "organization_id": prompt("Platform organization ID (optional; '-' clears)", old.get("organization_id", "")),
            "ca_file": old.get("ca_file", "")}
-    cert = prompt("Path to independently verified PEM CA/certificate (blank keeps current/system trust)")
-    if cert:
+    if cfg["organization_id"] == "-":
+        cfg["organization_id"] = ""
+    cert = prompt("Path to verified PEM CA/certificate (blank keeps current; '-' selects system trust)")
+    certificate = None
+    if cert == "-":
+        cfg["ca_file"] = ""
+    elif cert:
         source = Path(cert).expanduser()
         ssl.create_default_context(cafile=str(source))
-        private_write(directory / "truenas-ca.pem", source.read_text())
+        certificate = source.read_text()
         cfg["ca_file"] = "truenas-ca.pem"
     # Validate configuration and TLS before asking for a credential.
     fd, check_name = tempfile.mkstemp(dir=directory)
@@ -79,7 +84,12 @@ def main():
         with os.fdopen(fd, "w") as stream:
             json.dump(cfg, stream)
         settings(check_name)
-        tls_check(cfg, directory)
+        if certificate is None:
+            tls_check(cfg, directory)
+        else:
+            with tempfile.TemporaryDirectory(dir=directory) as staged:
+                Path(staged, "truenas-ca.pem").write_text(certificate)
+                tls_check(cfg, staged)
     finally:
         os.unlink(check_name)
     for name, label in (("openai_api_key", "Existing OpenAI runtime key"), ("truenas_api_key", "Existing TrueNAS API key")):
@@ -92,6 +102,8 @@ def main():
         if not value or len(value) > 4096 or not value.isascii() or any(not 33 <= ord(c) <= 126 for c in value):
             raise ConfigError("Invalid credential token; value not displayed")
         private_write(target, value + "\n")
+    if certificate is not None:
+        private_write(directory / "truenas-ca.pem", certificate)
     private_write(path, json.dumps(cfg, indent=2) + "\n")
     env = ROOT / ".env"
     if not env.exists():

@@ -56,7 +56,7 @@ def main():
             ops.compose("config", "--quiet")
             ops.compose("up", "-d", "--no-build", "--pull", "never")
             ops.wait_healthy()
-            print("PASS: non-root ARM64 container, TLS, official MCP initialize/list/system_info, tunnel polling and health")
+            print("PASS: native container, TLS, official MCP initialize/list/system_info, tunnel polling and health")
             cid = ops.compose("ps", "-q", "bridge", capture=True).stdout.strip()
             before = json.loads(ops.execute(["docker", "inspect", cid], capture=True).stdout)[0]
             assert before["HostConfig"]["ReadonlyRootfs"]
@@ -93,6 +93,10 @@ def main():
             stopped = json.loads(ops.execute(["docker", "inspect", ops.compose("ps", "-aq", "bridge", capture=True).stdout.strip()], capture=True).stdout)[0]
             assert stopped["State"]["ExitCode"] == 0, "Graceful tunnel shutdown failed"
             print("PASS: no credential in logs/config, tunnel shutdown exit 0")
+        except Exception:
+            logs = ops.compose("logs", "--no-color", capture=True, check=False).stdout
+            print(logs.replace(token, "[FIXTURE-REDACTED]")[-12000:], file=sys.stderr)
+            raise
         finally:
             ops.compose("down", "--remove-orphans", check=False)
 
