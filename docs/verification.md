@@ -1,6 +1,6 @@
 # Verification record
 
-This file records observations from 2026-10-26, not a general compatibility guarantee.
+This file records observations from 2026-10-26 and 2026-10-27, not a general compatibility guarantee.
 
 ## Current implementation acceptance
 
@@ -10,7 +10,7 @@ The following records distinguish local fixture checks from real-service cutover
 | --- | --- |
 | Compose configuration | Passed `docker compose config --quiet` |
 | Native Linux ARM64 build and execution | Passed; non-root, read-only root, no published ports, all capabilities dropped |
-| Linux AMD64 cross-build | All 3 executables built/verified as static x86-64 ELF; full runtime image blocked by Docker Hub anonymous pull quota (HTTP 429); AMD64 execution not tested |
+| Linux AMD64 cross-build | Full image built and loaded locally on 2026-10-27 after operator Docker Hub login, using tag `truenas-chatgpt-bridge:0.1.0-amd64`; all 3 executables previously verified as static x86-64 ELF; AMD64 execution not tested |
 | Strict hostname/secret permissions and health distinction tests | 7 tests passed |
 | Official MCP stdio discovery and `system_info` against TLS fixture | Passed with official TrueNAS MCP 0.0.6 |
 | Container restart and graceful shutdown | Offline restart/retest passed with shutdown exit code 0; real deployment also returned healthy after restart |
@@ -39,13 +39,23 @@ boot, Docker daemon or unrelated service settings were changed. CPU/PID/tmpfs
 limits remain configured; do not infer a memory cap from this Compose file on
 an unsupported host.
 
-The full AMD64 build can be retried when the base image is accessible:
+The initial full AMD64 build was blocked by Docker Hub's anonymous pull quota
+(HTTP 429). After the operator authenticated Docker locally, the unchanged build
+completed successfully on 2026-10-27. The image was loaded under a separate local
+tag; no image was published and the live ARM64 bridge remained healthy. Docker
+image inspection confirmed `linux/amd64` and non-root user `1000:1000`.
+
+To reproduce the successful full AMD64 build:
 
 ```sh
 docker buildx build --platform linux/amd64 -t truenas-chatgpt-bridge:0.1.0-amd64 --load .
 ```
 
-To reproduce the already successful AMD64 artifact build without an AMD64 base
+The AMD64 image has not been executed. Startup, fixture integration, restart and
+rollback still require an AMD64 host or an explicitly identified emulation test.
+Successful cross-compilation and image assembly do not establish runtime support.
+
+To reproduce the successful AMD64 artifact build without an AMD64 base
 image or emulator:
 
 ```sh
