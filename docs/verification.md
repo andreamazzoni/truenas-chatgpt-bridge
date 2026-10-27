@@ -11,7 +11,7 @@ The following records distinguish local fixture checks from real-service cutover
 | Compose configuration | Passed `docker compose config --quiet` |
 | Native Linux ARM64 build and execution | Passed; non-root, read-only root, no published ports, all capabilities dropped |
 | Linux AMD64 cross-build | Full image built and loaded locally on 2026-10-27 after operator Docker Hub login, using tag `truenas-chatgpt-bridge:0.1.0-amd64`; all 3 executables previously verified as static x86-64 ELF; AMD64 execution not tested |
-| Strict hostname/secret permissions and health distinction tests | 7 tests passed |
+| Strict hostname/secret permissions, health distinction and probe-state tests | 10 tests passed, including concurrent probe publication, failed-publication cleanup and NAS-failure reporting |
 | Official MCP stdio discovery and `system_info` against TLS fixture | Passed with official TrueNAS MCP 0.0.6 |
 | Container restart and graceful shutdown | Offline restart/retest passed with shutdown exit code 0; real deployment also returned healthy after restart |
 | Candidate replacement and retained-image rollback | Passed using the actual host update/rollback functions and exact previous image ID |

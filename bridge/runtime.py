@@ -7,6 +7,7 @@ import re
 import ssl
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -66,9 +67,16 @@ def probe(cfg):
         pass
     result = {"ok": ok, "checked_at": int(time.time()), "method": "system.info",
               "path": "official-client-separate-session"}
-    temporary = STATE.with_suffix(".new")
-    temporary.write_text(json.dumps(result) + "\n")
-    temporary.replace(STATE)
+    # Manual probes can overlap Docker healthchecks. Each writer needs its own
+    # file on the same filesystem so replacement stays atomic for status readers.
+    fd, name = tempfile.mkstemp(prefix=f".{STATE.name}-", dir=STATE.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w") as stream:
+            stream.write(json.dumps(result) + "\n")
+        temporary.replace(STATE)
+    finally:
+        temporary.unlink(missing_ok=True)
     return result
 
 
