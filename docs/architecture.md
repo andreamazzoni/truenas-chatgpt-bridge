@@ -1,5 +1,12 @@
 # Architecture and trust boundaries
 
+```text
+ChatGPT personal plugin → OpenAI Secure MCP Tunnel
+                                   ↑ outbound HTTPS
+                         tunnel-client → stdio → truenas-mcp → WSS → TrueNAS
+                         └──────── one non-root container ─────────┘
+```
+
 One container runs `tunnel-client run`. On demand, the official client starts
 `python /opt/bridge/runtime.py mcp`, which validates TLS, reads the mounted TrueNAS
 key and **execs the unmodified `truenas-mcp` binary**. The stdio pipes belong to
@@ -22,6 +29,10 @@ then Docker can kill a stuck process. `unless-stopped` handles process exit and
 Docker daemon/host restarts; it does not repair a running unhealthy container.
 Only the bridge's own service is controlled by the scripts.
 
+The container runs non-root with a read-only root filesystem, all capabilities
+dropped, bounded temporary storage, and no Docker socket or NAS dataset mounts.
+Logs rotate with `max-size: 10m` and `max-file: 3`.
+
 Compose requests a 768 MiB memory cap. Docker reports that the current development
 kernel cannot enforce memory/swap limits; this is an observed host limitation,
 not a reason to modify other services or the host boot configuration. Check
@@ -33,6 +44,20 @@ container**. Inspect sanitized status with `docker compose exec -T bridge python
 without a separate authenticated operator access design.
 
 ## Health semantics
+
+The readable `status` and `probe` reports separate these signals. Their `--json`
+output and Docker's health report expose the following fields:
+
+| Field | Evidence |
+| --- | --- |
+| `process_live` | tunnel-client's local liveness endpoint responds successfully |
+| `startup_ready` | upstream startup readiness; stdio may still be uninitialized |
+| `tunnel_ready` | liveness and startup readiness, plus a successful poll within 120 seconds |
+| `nas_probe.ok` | the official TrueNAS client completed `system.info` with verified TLS |
+
+Docker health requires tunnel readiness and a successful NAS probe. It runs
+every 60 seconds, with separate startup timing. An unhealthy state alone does
+not restart a running container.
 
 `/healthz` proves the tunnel daemon serves its liveness endpoint. `/readyz` is
 upstream startup readiness, not a complete stdio test. `tunnel_ready` additionally

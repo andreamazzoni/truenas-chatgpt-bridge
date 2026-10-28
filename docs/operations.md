@@ -48,6 +48,20 @@ second host is polling the same tunnel. For a live daemon with stale polling,
 check OpenAI permissions and network reachability. For a healthy tunnel but failed
 NAS probe, check certificates and key/account status in TrueNAS. Avoid raw logging.
 
+## Troubleshooting
+
+| Symptom | First thing to check |
+| --- | --- |
+| Build fails with a Docker Hub pull-rate message (HTTP 429) | Run `docker login` locally as the same user, complete the browser login, then retry. An authenticated account still has its own applicable limits. See [Docker's login guide](https://docs.docker.com/reference/cli/docker/login/). |
+| Setup cannot verify TLS | Check DNS, the hostname on the certificate and your CA selection. With a proxy, also check HTTPS on its backend. |
+| Container cannot read a credential file | Use the same non-root account for setup and operation; check file ownership and the UID/GID saved in `.env`. |
+| Process is live but `tunnel_ready` is false | Check outbound connectivity, the tunnel ID, runtime-key permissions and any required organization context. |
+| `nas_probe.ok` is false | Check NAS reachability, TLS and the key's associated user/permissions. A successful probe requires `system.info` access. |
+| Health is good but ChatGPT discovery/calls fail | Check that the plugin uses the intended tunnel, refresh its tools and confirm there is no second stdio client. |
+
+Avoid sharing raw logs publicly: keys should stay hidden, and logs can still
+contain private hostnames or identifiers.
+
 ## Update while retaining the previous working image
 
 First inspect the candidate upstream release notes, CLI, license and API changes.

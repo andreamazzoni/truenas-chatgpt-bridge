@@ -68,6 +68,44 @@ These logins, permissions, associations and acknowledgments are manual steps;
 the bridge does not automate unsupported authorization flows. It does not create
 or submit a public plugin.
 
+## Manual installation and setup prompts
+
+For separate build, configuration and startup steps, run from the checkout:
+
+```sh
+python3 scripts/bridge.py build
+python3 scripts/setup.py
+python3 scripts/bridge.py validate
+```
+
+The build downloads pinned upstream components and base images for the host's
+architecture. It needs no credentials; the first build can take a few minutes.
+Setup verifies hostname and TLS before asking for keys. Here is what to enter:
+
+| Prompt | What to enter |
+| --- | --- |
+| TrueNAS hostname or IP | For example, `nas.example.net` or `nas.example.net:8443`. Leave out `https://` and any path. If the certificate is on your reverse proxy, use the proxy's hostname. |
+| OpenAI tunnel ID | The tunnel ID from the OpenAI portal. |
+| Platform organization ID | Leave blank unless your tunnel requires an explicit `org-…` organization context. You can add it later. |
+| PEM CA/certificate path | On first setup, leave blank for a publicly trusted certificate. For a private CA or self-signed certificate, enter the local path to its independently verified public PEM certificate. |
+| OpenAI runtime key and TrueNAS API key | Enter each only at its hidden prompt. Keep keys out of chat, shell commands and `.env`. |
+
+Blank answers keep existing settings and keys are preserved. Enter `-` to clear
+the optional organization ID or return certificate trust to system CAs. Setup
+and validation do not start a tunnel. Once any previous client is stopped and
+its automatic relaunch disabled, start and check the bridge:
+
+```sh
+python3 scripts/bridge.py start --single-instance-confirmed
+python3 scripts/bridge.py status
+python3 scripts/bridge.py probe
+```
+
+The flag confirms the operator checked for other clients; the script cannot
+check other hosts. Startup waits up to 180 seconds for health. A successful NAS
+probe is a separate read-only check; complete the ChatGPT call described in the
+[quick start](../README.md#connect-chatgpt) to verify the full tool path.
+
 ## Hidden local configuration
 
 For a first installation, `python3 scripts/bridge.py install` guides you through
@@ -126,7 +164,8 @@ partially fails, rerun after correcting TLS/files; it never starts the bridge.
    automatic relaunch. Confirm its process has exited. Do not run two clients on
    one stdio tunnel, even if discovery appears to work.
 3. On the new host, run `python3 scripts/bridge.py start --single-instance-confirmed`.
-   Inspect `status`; run `probe` and require `nas_probe.ok: true`.
+   Inspect `status`; run `probe` and require a successful NAS read check
+   (`nas_probe.ok: true` with `--json`).
 4. In ChatGPT, refresh/update the existing personal plugin's tools, especially if
    it previously used a demo server. Verify the tools identify TrueNAS.
 5. Ask for a **read-only** `system_info` call (for example, the TrueNAS version).
