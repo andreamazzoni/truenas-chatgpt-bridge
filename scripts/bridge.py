@@ -16,6 +16,55 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL = ROOT / ".local"
+sys.path.insert(0, str(ROOT / "bridge"))
+from config import ConfigError, api_user, settings  # noqa: E402
+
+
+def private_write(path, data):
+    if path.is_symlink():
+        raise RuntimeError("Refusing to overwrite a symlink")
+    fd, name = tempfile.mkstemp(prefix=".bridge-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w") as stream:
+            stream.write(data)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+
+
+def current_configuration():
+    directory = ROOT / "config/local"
+    for path in (ROOT / "config", directory, directory / "settings.json", directory / "truenas-ca.pem"):
+        if path.is_symlink():
+            raise RuntimeError("Configuration snapshot paths must not be symlinks")
+    cfg = settings(directory / "settings.json", allow_legacy=True)
+    return {"settings": cfg, "ca_pem": (directory / cfg["ca_file"]).read_text() if cfg["ca_file"] else None}
+
+
+def write_configuration(bundle, directory):
+    if directory.is_symlink() or directory.parent.is_symlink():
+        raise RuntimeError("Configuration directories must not be symlinks")
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    cfg = bundle["settings"]
+    # Validate snapshots before changing the selected configuration. Only the
+    # known settings and public CA are included; credential files are untouched.
+    with tempfile.TemporaryDirectory(dir=LOCAL) as temporary:
+        check = Path(temporary) / "settings.json"
+        private_write(check, json.dumps(cfg))
+        settings(check, allow_legacy=True)
+    if cfg["ca_file"]:
+        if not isinstance(bundle["ca_pem"], str):
+            raise RuntimeError("Configuration snapshot is missing its public CA")
+        private_write(directory / cfg["ca_file"], bundle["ca_pem"])
+    private_write(directory / "settings.json", json.dumps(cfg, indent=2) + "\n")
+
+
+def preflight_configuration(image, bundle):
+    with tempfile.TemporaryDirectory(prefix="candidate-config-", dir=LOCAL) as temporary:
+        directory = Path(temporary)
+        write_configuration(bundle, directory)
+        compose("run", "--rm", "--no-deps", "--volume", f"{directory}:/etc/bridge:ro",
+                "bridge", "validate", image=image)
 
 
 def readable_report(report, command):
@@ -122,10 +171,10 @@ def active_image():
     return item["Image"]
 
 
-def retain(image):
+def retain(image, configuration):
     tag = "truenas-chatgpt-bridge:rollback-" + str(time.time_ns())
     execute(["docker", "image", "tag", image, tag])
-    (LOCAL / "rollback.json").write_text(json.dumps({"image": tag, "id": image}) + "\n")
+    private_write(LOCAL / "rollback.json", json.dumps({"image": tag, "id": image, "configuration": configuration}) + "\n")
     print("Previous image retained locally: " + tag)
 
 
@@ -228,14 +277,19 @@ def main():
     parser.add_argument("--image", help="Locally built, unique candidate image tag for update")
     parser.add_argument("--single-instance-confirmed", action="store_true", help="Operator has stopped any previous host using this tunnel")
     parser.add_argument("--json", action="store_true", help="Original JSON output for status or probe")
+    parser.add_argument("--api-user", help="TrueNAS key owner for update (username only, never an API key)")
     args = parser.parse_args()
     if args.json and args.command not in ("status", "probe"):
         parser.error("--json is only available for status and probe")
+    if args.api_user is not None and args.command != "update":
+        parser.error("--api-user is only available for update")
     with checkout_lock():
         cmd = args.command
         if cmd == "reset":
             reset()
             return
+        if LOCAL.is_symlink():
+            raise RuntimeError("Local state directory must not be a symlink")
         LOCAL.mkdir(mode=0o700, exist_ok=True)
         if cmd == "install":
             install()
@@ -265,9 +319,19 @@ def main():
             candidate = json.loads(execute(["docker", "image", "inspect", args.image], capture=True).stdout)[0]["Id"]
             if candidate == previous:
                 raise RuntimeError("Candidate is the current image")
-            compose("run", "--rm", "--no-deps", "bridge", "validate", image=candidate)
-            retain(previous)
+            original = current_configuration()
+            cfg = original["settings"].copy()
+            username = args.api_user or cfg.get("truenas_api_user")
+            if not username:
+                if not sys.stdin.isatty():
+                    raise RuntimeError("Update needs the TrueNAS API key owner; use a local terminal or --api-user USERNAME")
+                username = input("TrueNAS user that owns the existing API key: ").strip()
+            cfg["truenas_api_user"] = api_user(username)
+            updated = original | {"settings": cfg}
+            preflight_configuration(candidate, updated)
+            retain(previous, original)
             compose("stop", "bridge")
+            write_configuration(updated, ROOT / "config/local")
             compose("up", "-d", "--force-recreate", "--no-build", "--pull", "never", "bridge", image=candidate)
             wait_healthy()
             # Persist the immutable ID only after successful health verification.
@@ -276,7 +340,11 @@ def main():
         elif cmd == "rollback":
             saved = json.loads((LOCAL / "rollback.json").read_text())
             execute(["docker", "image", "inspect", saved["id"]], capture=True)
+            if "configuration" not in saved:
+                raise RuntimeError("Legacy rollback record has no configuration snapshot; restore its matching configuration manually before using the old image")
+            preflight_configuration(saved["id"], saved["configuration"])
             compose("stop", "bridge")
+            write_configuration(saved["configuration"], ROOT / "config/local")
             compose("up", "-d", "--force-recreate", "--no-build", "--pull", "never", "bridge", image=saved["id"])
             wait_healthy()
             select_image(saved["id"])
@@ -286,7 +354,7 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (ConfigError, RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
         print(str(error) if isinstance(error, RuntimeError) else "Operation failed; check local files and Docker status", file=sys.stderr)
         sys.exit(1)
     except (EOFError, KeyboardInterrupt):

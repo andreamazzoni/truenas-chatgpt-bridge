@@ -29,6 +29,7 @@ def run(args, **kw):
 
 def main():
     image = os.environ.get("BRIDGE_TEST_IMAGE", "truenas-chatgpt-bridge:0.1.0")
+    legacy_image = os.environ.get("BRIDGE_TEST_LEGACY_IMAGE")
     token = uuid.uuid4().hex
     with tempfile.TemporaryDirectory(prefix="bridge-offline-") as tmp:
         folder = Path(tmp)
@@ -41,9 +42,11 @@ def main():
             path = folder / "secrets" / name
             path.write_text("fixture-" + token + "\n")
             path.chmod(0o600)
-        cfg = dict(truenas_host="127.0.0.1:9443", tunnel_id="tunnel_" + "a" * 32, ca_file="truenas-ca.pem", organization_id="")
+        cfg = dict(truenas_api_user="fixture-user", truenas_host="127.0.0.1:9443", tunnel_id="tunnel_" + "a" * 32, ca_file="truenas-ca.pem", organization_id="")
+        if legacy_image:
+            del cfg["truenas_api_user"]
         (folder / "config/local/settings.json").write_text(json.dumps(cfg))
-        (folder / ".env").write_text(f"BRIDGE_IMAGE={image}\nBRIDGE_UID={os.getuid()}\nBRIDGE_GID={os.getgid()}\n")
+        (folder / ".env").write_text(f"BRIDGE_IMAGE={legacy_image or image}\nBRIDGE_UID={os.getuid()}\nBRIDGE_GID={os.getgid()}\n")
         # Same production hardening/secrets/health, with a test entrypoint and
         # internal-only network. No endpoint can reach OpenAI or the real NAS.
         source = (ROOT / "compose.yaml").read_text()
@@ -91,14 +94,21 @@ def main():
             candidate = "truenas-chatgpt-bridge:offline-candidate-" + token[:8]
             build = subprocess.run(["docker", "build", "--network=none", "-t", candidate, "-"], input=f"FROM {image}\nLABEL bridge.offline.fixture={token[:8]}\n", text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             assert build.returncode == 0, "Candidate image build failed"
-            sys.argv = ["bridge.py", "update", "--image", candidate]
+            sys.argv = ["bridge.py", "update", "--image", candidate, "--api-user", "fixture-user"]
             ops.main()
+            migrated = json.loads((folder / "config/local/settings.json").read_text())
+            assert migrated["truenas_api_user"] == "fixture-user"
+            # The new official stdio server must work with JSON-RPC login.
+            ops.compose("exec", "-T", "bridge", "test", "-f", "/tmp/stdio-verified")
             sys.argv = ["bridge.py", "rollback"]
             ops.main()
             assert ops.active_image() == previous
+            assert json.loads((folder / "config/local/settings.json").read_text()) == cfg
             ops.select_image(previous)
             assert "BRIDGE_IMAGE=" + previous in (folder / ".env").read_text()
             print("PASS: candidate replacement and rollback to retained exact image")
+            if legacy_image:
+                print("PASS: real 0.0.6 -> 0.0.7 migration and rollback restore both image and legacy configuration")
             logs = ops.compose("logs", "--no-color", capture=True).stdout
             assert token not in logs, "Fixture credential appeared in logs"
             assert token not in json.dumps(before["Config"]), "Fixture credential appeared in container configuration"

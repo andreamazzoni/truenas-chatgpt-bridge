@@ -48,10 +48,14 @@ def endpoint(value):
     return host, port
 
 
-def settings(path):
+def settings(path, *, allow_legacy=False):
     cfg = json.loads(Path(path).read_text())
-    if not isinstance(cfg, dict) or set(cfg) != {"truenas_host", "tunnel_id", "ca_file", "organization_id"}:
+    legacy = {"truenas_host", "tunnel_id", "ca_file", "organization_id"}
+    expected = legacy | {"truenas_api_user"}
+    if not isinstance(cfg, dict) or (set(cfg) != expected and not (allow_legacy and set(cfg) == legacy)):
         raise ConfigError("Unexpected or missing settings fields; run setup")
+    if "truenas_api_user" in cfg:
+        api_user(cfg["truenas_api_user"])
     endpoint(cfg["truenas_host"])
     if not isinstance(cfg["tunnel_id"], str) or not re.fullmatch(r"tunnel_[a-z0-9]{32}", cfg["tunnel_id"]):
         raise ConfigError("Invalid tunnel ID")
@@ -60,6 +64,12 @@ def settings(path):
     if not isinstance(cfg["organization_id"], str) or (cfg["organization_id"] and not re.fullmatch(r"org-[a-zA-Z0-9_-]{1,100}", cfg["organization_id"])):
         raise ConfigError("Invalid organization ID")
     return cfg
+
+
+def api_user(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.@\\$-]{0,255}", value):
+        raise ConfigError("Enter the TrueNAS user that owns the API key")
+    return value
 
 
 def tls_check(cfg, directory):

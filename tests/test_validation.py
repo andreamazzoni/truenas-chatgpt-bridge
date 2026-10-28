@@ -38,7 +38,7 @@ class ValidationTests(unittest.TestCase):
     def test_settings_rejects_unknown_fields_and_command_injection(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "settings.json"
-            cfg = dict(truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
+            cfg = dict(truenas_api_user="fixture-user", truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
             path.write_text(json.dumps(cfg))
             self.assertEqual(settings(path), cfg)
             for field, value in (("ca_file", "../../key"), ("tunnel_id", "tunnel_bad\n"), ("organization_id", "org-x\n"), ("command", "echo")):
@@ -58,14 +58,27 @@ class ValidationTests(unittest.TestCase):
         self.assertTrue(run(time.time())["tunnel_ready"])
         self.assertFalse(run("NaN")["tunnel_ready"])
 
+    def test_legacy_settings_are_only_accepted_for_migration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            legacy = dict(truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
+            path.write_text(json.dumps(legacy))
+            with self.assertRaises(ConfigError):
+                settings(path)
+            self.assertEqual(settings(path, allow_legacy=True), legacy)
+            for user in ("", "bad user", "user\n", "--api-key=fixture"):
+                path.write_text(json.dumps(legacy | {"truenas_api_user": user}))
+                with self.assertRaises(ConfigError):
+                    settings(path)
+
     def test_mcp_environment_contains_no_tunnel_key_or_insecure_flags(self):
         with patch.object(runtime, "secret", return_value="fixture-token"):
-            env = runtime.nas_environment({"truenas_host": "nas.example:8443", "ca_file": ""})
-        self.assertEqual(env["TRUENAS_URL"], "wss://nas.example:8443/websocket")
-        self.assertEqual(set(env), {"PATH", "HOME", "TRUENAS_URL", "TRUENAS_API_KEY"})
+            env = runtime.nas_environment({"truenas_host": "nas.example:8443", "truenas_api_user": "fixture-user", "ca_file": ""})
+        self.assertEqual(env["TRUENAS_URL"], "wss://nas.example:8443/api/current")
+        self.assertEqual(set(env), {"PATH", "HOME", "TRUENAS_URL", "TRUENAS_API_KEY", "TRUENAS_API_USER"})
 
     def test_tunnel_uses_native_file_flag_instead_of_literal_env_reference(self):
-        cfg = dict(truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
+        cfg = dict(truenas_api_user="fixture-user", truenas_host="nas.example", tunnel_id="tunnel_" + "a" * 32, ca_file="", organization_id="")
         with patch.object(runtime, "settings", return_value=cfg), patch.object(runtime, "secret"), patch.object(runtime, "tls_check"), patch.object(runtime.Path, "mkdir"), patch.object(runtime.os, "execve", side_effect=RuntimeError("exec")) as call, patch.object(runtime.sys, "argv", ["runtime.py", "run"]):
             with self.assertRaises(RuntimeError):
                 runtime.main()

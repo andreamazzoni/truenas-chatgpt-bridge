@@ -61,9 +61,10 @@ def main():
         folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         folder.chmod(0o700)
     path = directory / "settings.json"
-    old = settings(path) if path.exists() else {}
+    old = settings(path, allow_legacy=True) if path.exists() else {}
     print("Reuse the existing tunnel and keys. Secrets are entered here with echo disabled.")
     cfg = {"truenas_host": prompt("TrueNAS hostname or IP (no scheme/path; optional :port)", old.get("truenas_host", "")),
+           "truenas_api_user": prompt("TrueNAS user that owns the API key", old.get("truenas_api_user", "")),
            "tunnel_id": prompt("Existing OpenAI tunnel ID", old.get("tunnel_id", "")),
            "organization_id": prompt("Platform organization ID (optional; '-' clears)", old.get("organization_id", "")),
            "ca_file": old.get("ca_file", "")}

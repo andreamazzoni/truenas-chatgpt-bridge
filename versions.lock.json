@@ -2,7 +2,7 @@
   "schema": 1,
   "images": {
     "python": "python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f",
-    "go": "golang:1.25.12-bookworm@sha256:6359592445455f2dbe2412bed411336035bc019a50017720d77454ffdd6d0f82"
+    "go": "golang:1.27.3-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9"
   },
   "tunnel": {
     "version": "0.0.18",
@@ -19,9 +19,9 @@
     }
   },
   "truenas": {
-    "version": "0.0.6",
-    "commit": "542e59d0f8b2909fe25cbc29ea23c7908fd2f6d7",
-    "url": "https://codeload.github.com/truenas/truenas-mcp/tar.gz/542e59d0f8b2909fe25cbc29ea23c7908fd2f6d7",
-    "sha256": "83a7dbf6a96c670026ba3fe32523aafa58da60571f6792a1ad0e791682331e1b"
+    "version": "0.0.7",
+    "commit": "e5a2d27fe61006847f1e2715d6349cedef0089df",
+    "url": "https://codeload.github.com/truenas/truenas-mcp/tar.gz/e5a2d27fe61006847f1e2715d6349cedef0089df",
+    "sha256": "a24b909c623fd70fc0dc067394a8da36912dc8e87fdcb961d40f42b029595fd0"
   }
 }

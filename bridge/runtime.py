@@ -25,8 +25,8 @@ def nas_environment(cfg):
     env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp/home"}
     host, port = endpoint(cfg["truenas_host"])
     authority = f"[{host}]" if ":" in host else host
-    # v0.0.6 drops custom ports from bare hostnames; use its supported wss URL.
-    env["TRUENAS_URL"] = f"wss://{authority}:{port}/websocket"
+    env["TRUENAS_URL"] = f"wss://{authority}:{port}/api/current"
+    env["TRUENAS_API_USER"] = cfg["truenas_api_user"]
     env["TRUENAS_API_KEY"] = secret("/run/secrets/truenas_api_key")
     if cfg["ca_file"]:
         env["TRUENAS_TLS_CA"] = str(DIRECTORY / cfg["ca_file"])

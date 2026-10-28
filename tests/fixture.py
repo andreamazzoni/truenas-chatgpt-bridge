@@ -50,7 +50,11 @@ def send(stream, value):
 class NAS(socketserver.StreamRequestHandler):
     def handle(self):
         try:
-            self.rfile.readline()
+            request_path = self.rfile.readline().decode().split()[1]
+            legacy = request_path == "/websocket"
+            if request_path not in ("/websocket", "/api/current"):
+                self.wfile.write(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
+                return
             headers = {}
             while line := self.rfile.readline().strip():
                 key, value = line.decode().split(":", 1)
@@ -61,20 +65,24 @@ class NAS(socketserver.StreamRequestHandler):
             authenticated = False
             while True:
                 req = receive(self.rfile)
-                if req.get("msg") == "connect":
+                if legacy and req.get("msg") == "connect":
                     send(self.wfile, {"msg": "connected", "session": "fixture"})
                     continue
                 method = req.get("method")
-                if method == "auth.login_with_api_key":
+                if legacy and method == "auth.login_with_api_key":
                     expected = Path("/run/secrets/truenas_api_key").read_text().strip()
                     authenticated = req.get("params") == [expected]
                     result = authenticated
+                elif not legacy and method == "auth.login_ex":
+                    expected = Path("/run/secrets/truenas_api_key").read_text().strip()
+                    authenticated = req.get("params") == [{"mechanism": "API_KEY_PLAIN", "username": "fixture-user", "api_key": expected}]
+                    result = {"response_type": "SUCCESS" if authenticated else "AUTH_ERR"}
                 elif method == "system.info" and authenticated:
                     result = {"version": "FIXTURE", "hostname": "fixture"}
                 else:
-                    send(self.wfile, {"id": req.get("id"), "msg": "result", "error": {"code": 1, "message": "fixture rejected method"}})
+                    send(self.wfile, {"id": req.get("id"), **({"msg": "result"} if legacy else {"jsonrpc": "2.0"}), "error": {"code": -32000, "message": "fixture rejected method"}})
                     continue
-                send(self.wfile, {"id": req["id"], "msg": "result", "result": result})
+                send(self.wfile, {"id": req["id"], **({"msg": "result"} if legacy else {"jsonrpc": "2.0"}), "result": result})
         except (EOFError, OSError, ValueError, KeyError):
             pass  # Includes no-credential TLS preflight connecting and closing.
 

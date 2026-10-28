@@ -39,7 +39,11 @@ with subprocess.Popen(["python", "/opt/bridge/runtime.py", "mcp"], stdin=subproc
     assert reply["result"]["serverInfo"]["name"] == "truenas-mcp"
     exchange({"jsonrpc": "2.0", "method": "notifications/initialized"})
     reply = exchange({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-    assert any(tool["name"] == "system_info" for tool in reply["result"]["tools"])
+    tools = {tool["name"]: tool for tool in reply["result"]["tools"]}
+    assert {"system_info", "create_dataset", "start_app", "stop_app"} <= tools.keys()
+    if "truenas_api_user" in cfg:
+        assert tools["system_info"]["annotations"]["readOnlyHint"]
+        assert "confirm" in tools["stop_app"]["inputSchema"]["properties"]
     reply = exchange({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "system_info", "arguments": {}}})
     assert not reply["result"].get("isError")
     assert "FIXTURE" in reply["result"]["content"][0]["text"]

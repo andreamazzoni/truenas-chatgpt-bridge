@@ -95,7 +95,7 @@ class ResumeSetupTests(unittest.TestCase):
     def test_interrupted_secret_input_preserves_settings_and_completed_key(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            answers = ["nas.example", "tunnel_" + "a" * 32, "", ""]
+            answers = ["nas.example", "fixture-user", "tunnel_" + "a" * 32, "", ""]
             with patch.object(setup, "ROOT", root), patch.object(setup.sys, "argv", ["setup.py"]), \
                  patch.object(setup.sys.stdin, "isatty", return_value=True), \
                  patch.object(setup.sys.stderr, "isatty", return_value=True), \
@@ -114,7 +114,7 @@ class ResumeSetupTests(unittest.TestCase):
                  patch.object(setup.sys.stderr, "isatty", return_value=True), \
                  patch.object(setup.os, "getuid", return_value=1000), \
                  patch.object(setup.os, "umask"), patch.object(setup, "tls_check"), \
-                 patch("builtins.print"), patch("builtins.input", side_effect=["", "", "", ""]), \
+                 patch("builtins.print"), patch("builtins.input", side_effect=["", "", "", "", ""]), \
                  patch.object(setup.getpass, "getpass", return_value="fixture-nas") as hidden:
                 setup.main()
             self.assertEqual(hidden.call_count, 1)

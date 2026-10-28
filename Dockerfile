@@ -4,7 +4,7 @@ WORKDIR /build
 COPY versions.lock.json build/fetch.py ./
 RUN python fetch.py "$TARGETARCH"
 
-FROM --platform=$BUILDPLATFORM golang:1.25.12-bookworm@sha256:6359592445455f2dbe2412bed411336035bc019a50017720d77454ffdd6d0f82 AS compile
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9 AS compile
 ARG TARGETOS
 ARG TARGETARCH
 ENV GOTOOLCHAIN=local CGO_ENABLED=0 GOMAXPROCS=2
@@ -12,7 +12,7 @@ WORKDIR /src/truenas-mcp
 COPY --from=fetch /build/source/ ./
 COPY build/probe.go ./cmd/bridge-probe/main.go
 RUN go mod download && go mod verify && go mod vendor
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w -buildid= -X main.Version=0.0.6' -o /out/truenas-mcp ./cmd/truenas-mcp \
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w -buildid= -X main.Version=0.0.7' -o /out/truenas-mcp ./cmd/truenas-mcp \
     && GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o /out/bridge-probe ./cmd/bridge-probe
 
 FROM scratch AS binaries
