@@ -102,8 +102,11 @@ Treat diagnostic output as private operational information.
 - Only TrueNAS and ChatGPT; no autonomous scheduling of administrative actions.
 - Only Linux ARM64/AMD64 image targets. Other platforms and Docker namespace modes
   are not claimed compatible.
-- The pinned TrueNAS release uses the legacy TLS WebSocket API; future servers
-  may remove it. Updating to a newer MCP API is a separately reviewed upgrade.
+- The pinned TrueNAS MCP uses the older protocol at `/websocket`. TrueNAS calls
+  this the [legacy API](https://github.com/truenas/api_client#about), distinct
+  from JSON-RPC 2.0 at `/api/current`; both use WebSocket transport. Future servers
+  may remove the older endpoint. Migrating to the newer NAS API requires a
+  separately reviewed upstream MCP upgrade.
 - TLS preflight verifies the front-facing certificate, never the reverse proxy's
   backend hop. Secure that hop before supplying a key.
 - A host operations lock serializes this checkout's scripts. It cannot discover

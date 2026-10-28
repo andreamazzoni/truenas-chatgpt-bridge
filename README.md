@@ -16,7 +16,7 @@ TrueNAS permissions control which actions are allowed. Use a dedicated account;
 pass through OpenAI and ChatGPT. [Permissions and data exposure](docs/architecture.md#permissions-and-data-exposure).
 
 ARM64 is verified through a real read-only ChatGPT call; AMD64 builds but has not
-been run. The pinned MCP is a research preview using the legacy WebSocket API.
+been run. TrueNAS MCP 0.0.6 is an upstream research preview.
 See [compatibility](docs/verification.md).
 
 ## Quick start
