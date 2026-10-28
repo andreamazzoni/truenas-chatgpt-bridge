@@ -7,9 +7,9 @@ marked bridge code and uses the upstream TrueNAS client package.
 
 | Component | Pinned source | License and retained material |
 | --- | --- | --- |
-| TrueNAS MCP 0.0.6 | [542e59d0](https://github.com/truenas/truenas-mcp/tree/542e59d0f8b2909fe25cbc29ea23c7908fd2f6d7) | GPLv3, `licenses/truenas-mcp-GPL-3.0.txt`; full source and vendored dependency sources/licenses in image |
+| TrueNAS MCP 0.0.7 | [e5a2d27f](https://github.com/truenas/truenas-mcp/tree/e5a2d27fe61006847f1e2715d6349cedef0089df) | GPLv3, `licenses/truenas-mcp-GPL-3.0.txt`; full source and vendored dependency sources/licenses in image |
 | OpenAI tunnel-client 0.0.18 | [274a5588](https://github.com/openai/tunnel-client/tree/274a5588414819f063d27100a4fb1096aae3830f) | Apache-2.0, license and NOTICE retained in repo and image; release dependency license inventory and SPDX SBOM retained |
-| Go toolchain | 1.25.12 official image, locked index digest | Build-time only; source build requires the documented Go compiler |
+| Go toolchain | 1.27.3 official image, locked index digest | Build-time only; source build requires the documented Go compiler |
 | Python/Debian runtime | 3.13.13 slim-bookworm official image, locked index digest | Their own and installed package licenses remain in the base image |
 
 TrueNAS source is downloaded using an immutable commit and a checked SHA-256.

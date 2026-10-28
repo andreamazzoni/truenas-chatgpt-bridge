@@ -10,10 +10,11 @@ change TrueNAS settings. If the existing key cannot be recovered, the operator
 must manage its replacement in TrueNAS; do not grant broader rights to solve a
 permission failure.
 
-The pinned MCP uses `/websocket` and `auth.login_with_api_key`, as implemented in
-[v0.0.6 source](https://github.com/truenas/truenas-mcp/tree/v0.0.6).
-Do not assume newer TrueNAS releases retain this endpoint. The upstream default
-branch differs from this pinned release; follow the pinned CLI and source.
+The pinned MCP 0.0.7 requires TrueNAS 25.04 or later and uses `/api/current`
+with JSON-RPC 2.0 and `auth.login_ex`. It requires the API key owner's username
+as well as the key. There is no legacy-protocol fallback. Follow the
+[pinned source](https://github.com/truenas/truenas-mcp/tree/v0.0.7), not the
+upstream default branch.
 
 API key authentication must use TLS. TrueNAS can revoke a key presented over
 unencrypted HTTP/WebSocket. With a reverse proxy, **both** client → proxy and
@@ -24,7 +25,7 @@ the proxy's backend configuration: inspect it independently before authenticatin
 
 Configure `nas.example.net`, an IPv4 address, `[IPv6]`, or a host with an explicit
 port. Do not include `https://`, a URL path, username, password, query or fragment.
-The bridge constructs the pinned upstream's supported `wss://host:port/websocket`
+The bridge constructs the pinned upstream's supported `wss://host:port/api/current`
 URL to preserve non-default ports and IPv6. No `ws://` or insecure mode is offered.
 
 For a publicly trusted certificate, leave the CA path blank. For a private CA or
@@ -85,6 +86,7 @@ Setup verifies hostname and TLS before asking for keys. Here is what to enter:
 | Prompt | What to enter |
 | --- | --- |
 | TrueNAS hostname or IP | For example, `nas.example.net` or `nas.example.net:8443`. Leave out `https://` and any path. If the certificate is on your reverse proxy, use the proxy's hostname. |
+| TrueNAS API key owner | The username of the TrueNAS account that owns the key. It is required by MCP 0.0.7; it is not the OpenAI account or the key itself. |
 | OpenAI tunnel ID | The tunnel ID from the OpenAI portal. |
 | Platform organization ID | Leave blank unless your tunnel requires an explicit `org-…` organization context. You can add it later. |
 | PEM CA/certificate path | On first setup, leave blank for a publicly trusted certificate. For a private CA or self-signed certificate, enter the local path to its independently verified public PEM certificate. |
@@ -104,7 +106,7 @@ python3 scripts/bridge.py probe
 The flag confirms the operator checked for other clients; the script cannot
 check other hosts. Startup waits up to 180 seconds for health. A successful NAS
 probe is a separate read-only check; complete the ChatGPT call described in the
-[quick start](../README.md#connect-chatgpt) to verify the full tool path.
+[quick start](../README.md#quick-start) to verify the full tool path.
 
 ## Hidden local configuration
 
@@ -133,7 +135,7 @@ Setup creates ignored local files:
 
 | Path | Purpose | Backup category |
 | --- | --- | --- |
-| `config/local/settings.json` | NAS hostname, tunnel/org ID, CA selection | Private configuration |
+| `config/local/settings.json` | NAS hostname and key owner, tunnel/org ID, CA selection | Private configuration |
 | `config/local/truenas-ca.pem` | Optional verified public trust material | Private configuration |
 | `secrets/openai_api_key` | OpenAI runtime credential, mode 0600 | Encrypted credentials backup |
 | `secrets/truenas_api_key` | Existing TrueNAS credential, mode 0600 | Encrypted credentials backup |
@@ -147,6 +149,9 @@ Rootless Docker/user namespace remapping needs separate permission validation;
 it has not been tested.
 
 Rerunning setup preserves existing keys without reading them to the screen.
+When upgrading an active 0.0.6 deployment, use the staged
+[migration procedure](operations.md#upgrade-from-truenas-mcp-006) instead of
+rerunning setup against its mounted configuration.
 To replace a key, stop the bridge, move the old credential file to protected
 encrypted storage outside the checkout, rerun setup to enter the replacement, and
 recreate the container. Mounts can retain an old inode after an atomic file

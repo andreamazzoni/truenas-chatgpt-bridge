@@ -79,21 +79,52 @@ python3 scripts/bridge.py status
 The update script requires the currently running container to be healthy, resolves
 the candidate to its immutable local image ID, and preflights its files and TLS
 without starting a tunnel. It tags the old image with a unique `rollback-*` name
-and records it in ignored `.local/rollback.json`. It then **stops the current
-container before recreating it**, waits for health and saves the selected immutable
-image ID in `.env`. Never scale this service or start a parallel Compose project
-against the same real tunnel.
+and records it together with a snapshot of the current settings and selected
+public CA in ignored `.local/rollback.json` (mode 0600). Candidate settings are
+validated through a separate read-only mount before modifying the active files.
+It then **stops the current container**, writes the candidate settings, recreates
+the container, waits for health and saves the immutable image ID in `.env`.
+Never scale this service or start a parallel Compose project against the same
+real tunnel.
 
 Keep the old source revision too: commit local changes before an update and record
-the previous revision in a private change record. The image rollback command
-assumes the old and new revisions share the current Compose/settings layout. If
-that layout changes, restore the old checkout/configuration while stopped before
-recreating its image. No automatic schema migration is implemented.
+the previous revision in a private change record. Rollback restores the saved
+settings schema as well as the image. It assumes the old and new revisions share
+the current Compose layout. If that layout changes, restore the old checkout
+while stopped before recreating its image. Credential files are not copied into
+the rollback record or restored.
 
 After health passes, refresh changed plugin tools and verify a read-only ChatGPT
 call. The script cannot perform that user-facing acceptance step. If an update
 fails health, it leaves the candidate available for diagnosis and the previous
 image retained; explicitly roll back. It does not blindly replay NAS tool calls.
+
+## Upgrade from TrueNAS MCP 0.0.6
+
+Build and test a uniquely tagged 0.0.7 candidate first. Keep the existing
+deployment running with its original settings until the coordinated update;
+do not run setup on its mounted configuration to add the new username.
+
+```sh
+docker buildx build --load -t truenas-chatgpt-bridge:mcp-0.0.7-candidate .
+BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:mcp-0.0.7-candidate python3 tests/integration.py
+python3 scripts/bridge.py update --image truenas-chatgpt-bridge:mcp-0.0.7-candidate
+```
+
+Update asks locally for the **TrueNAS username that owns the existing API key**
+when it is missing from the old settings. No key needs to be entered again.
+`--api-user USERNAME` is also available for this non-secret setting. The candidate
+uses `/api/current` and requires TrueNAS 25.04+. The preflight checks files and
+TLS without authenticating; health after replacement verifies the NAS read and
+tunnel polling. Refresh the ChatGPT tool catalog and test `system_info` again.
+Some upstream destructive operations now require `confirm: true` and otherwise
+return a preview; query and management tools remain available according to NAS
+permissions. The upstream optional read-only/allow/deny flags are not currently
+part of this bridge's configuration.
+
+If the candidate fails, use `rollback` from this new checkout. It stops the
+candidate before restoring both the original image and the old settings schema.
+Do not switch back to the old scripts before restoring the configuration.
 
 ## Rollback
 
@@ -103,10 +134,15 @@ python3 scripts/bridge.py status
 python3 scripts/bridge.py probe
 ```
 
-Rollback verifies the retained image exists locally, stops the current container,
+Rollback verifies the retained image and preflights its saved settings using a
+separate read-only mount, stops the current container, restores those settings,
 recreates the exact previous image, waits for health and saves its image ID in
 `.env`. Repeat the read-only ChatGPT test. The rollback record remains available;
 the next successful update establishes a new immediate rollback target.
+Rollback records created by older scripts contain only an image reference;
+the new command refuses those records because it cannot establish a matching
+configuration. Restore such an image and its configuration manually while the
+bridge is stopped.
 
 Do not prune retained images before accepting the update. An image tag protects
 against normal dangling-image cleanup, but `docker image prune -a` can still
@@ -156,7 +192,7 @@ shell; keep or unset them deliberately before reinstalling or switching projects
 | Category | Include | Restore method |
 | --- | --- | --- |
 | Repository | Committed code, lock file, docs, license files | Clone the private remote and select the recorded revision |
-| Local settings | `.env`, `config/local/`, `.local/rollback.json`, image IDs/revision record | Restore with original access permissions; check hostname/CA for the target host |
+| Local settings | `.env`, `config/local/`, `.local/rollback.json` (previous settings/public CA), image IDs/revision record | Restore with original access permissions; check hostname/CA for the target host |
 | Credentials | `secrets/` and any external credential source | Back up separately with encryption and restricted access; never commit or attach to issues |
 | Images | Working and previous immutable images | `docker image save` into protected storage, `docker image load` on compatible architecture |
 | Bridge runtime | No required durable application state | Recreated; tmpfs health, sessions and in-memory tasks are discarded |

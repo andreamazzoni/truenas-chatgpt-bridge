@@ -1,8 +1,41 @@
 # Verification record
 
-This file records observations from 2026-10-26 and 2026-10-27, not a general compatibility guarantee.
+This file separates build/fixture observations from real-service acceptance;
+it is not a general compatibility guarantee.
 
-## Current implementation acceptance
+## Current sources: TrueNAS MCP 0.0.7 (2026-10-28)
+
+Pinned components are TrueNAS MCP 0.0.7 at
+`e5a2d27fe61006847f1e2715d6349cedef0089df`, OpenAI tunnel-client 0.0.18 and
+Go 1.27.3. Source/artifact checksums and multi-architecture base image digests
+are recorded in `versions.lock.json` and `Dockerfile`.
+
+| Check | Result |
+| --- | --- |
+| Compose configuration and unit tests | Passed; 43 tests, including staged settings, failed preflight/health and configuration rollback |
+| Linux ARM64 image | Built and executed against isolated fixtures; official MCP discovery and `system_info` passed over JSON-RPC 2.0 with `auth.login_ex` |
+| Linux AMD64 image | Full cross-build completed; metadata confirms `linux/amd64` and non-root `1000:1000`; runtime not executed |
+| Management tool discovery | Fixture verified `create_dataset`, `start_app`, `stop_app`, upstream annotations and the `confirm` parameter; no NAS write was executed |
+| Restart, update and rollback | Passed with the actual operations functions; 0.0.6 → 0.0.7 → 0.0.6 restored the exact image and original settings schema/public CA |
+| Health/reporting and reset | Readable and JSON reports, graceful shutdown and repeated reset passed in temporary Compose projects |
+| Credential exclusion | Audit passed tracked paths, pins, non-root image configuration and ignored canary rebuild/layer scan |
+| Real NAS, hosted tunnel and ChatGPT with 0.0.7 | Not yet tested; no production cutover or real credential changes were made |
+
+The fixture accepts the legacy protocol only to test the retained 0.0.6 image;
+the new runtime exclusively uses `/api/current`. Upstream requires TrueNAS
+25.04+, but that minimum is not a verified real-service result for this bridge.
+The host memory-limit limitation recorded below remains unchanged.
+
+Reproduce the migration test with separately retained local images:
+
+```sh
+BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:mcp-0.0.7-candidate BRIDGE_TEST_LEGACY_IMAGE=truenas-chatgpt-bridge:probe-race-fix-98452e5 python3 tests/integration.py
+```
+
+The legacy tag names the previously tested local 0.0.6 image, not a public
+registry image. Substitute your own retained and verified local tag if needed.
+
+## Historical 0.0.6 acceptance (2026-10-26 and 2026-10-27)
 
 The following records distinguish local fixture checks from real-service cutover evidence:
 

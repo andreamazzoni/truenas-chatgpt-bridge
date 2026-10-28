@@ -1,23 +1,27 @@
 # truenas-chatgpt-bridge
 
 Inspect and manage TrueNAS from ChatGPT: query system information, create datasets,
-and start or stop apps. Runs the official [TrueNAS MCP server](https://github.com/truenas/truenas-mcp/tree/v0.0.6)
-and [OpenAI tunnel client](https://github.com/openai/tunnel-client/tree/v0.0.18)
-in one Docker Compose container, without opening inbound internet ports.
+and start or stop apps. Runs the official components in one Docker Compose
+container, without opening inbound internet ports.
+
+| Component | Pinned version |
+| --- | --- |
+| TrueNAS MCP | **[0.0.7](https://github.com/truenas/truenas-mcp/releases/tag/v0.0.7)** |
+| OpenAI Secure MCP Tunnel client | **[0.0.18](https://github.com/openai/tunnel-client/releases/tag/v0.0.18)** |
 
 ## Requirements
 
 - Linux, Git, Python 3.11+, Docker Engine with Compose and Buildx; a non-root user with Docker access.
-- TrueNAS hostname and API key; verified TLS, including both hops when using a reverse proxy.
+- TrueNAS **25.04+**, hostname, API key and its owner username; verified TLS on both hops if using a reverse proxy.
 - OpenAI tunnel ID and runtime key, outbound HTTPS, and custom MCP access in ChatGPT.
 
 TrueNAS permissions control which actions are allowed. Use a dedicated account;
 **Readonly Admin** is recommended for the first test. Requests and NAS results
 pass through OpenAI and ChatGPT. [Permissions and data exposure](docs/architecture.md#permissions-and-data-exposure).
 
-ARM64 is verified through a real read-only ChatGPT call; AMD64 builds but has not
-been run. TrueNAS MCP 0.0.6 is an upstream research preview.
-See [compatibility](docs/verification.md).
+TrueNAS MCP is an upstream research preview. See [verified platforms and
+compatibility](docs/verification.md); real-service results for 0.0.6 do not
+establish acceptance of 0.0.7.
 
 ## Quick start
 

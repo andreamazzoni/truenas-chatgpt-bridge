@@ -18,10 +18,12 @@ debug, raw HTTP logging or insecure TLS options. Enterprise proxy and control-pl
 mTLS customization are outside v0.1.0's supported configuration.
 
 OpenAI's key is passed as a native `file:/run/secrets/openai_api_key` reference.
-TrueNAS MCP v0.0.6 requires a flag or environment variable, so only its child
+TrueNAS MCP v0.0.7 requires a flag or environment variable, so only its child
 gets `TRUENAS_API_KEY` loaded from `/run/secrets/truenas_api_key`. It is never an
 argument or image/container configuration value. It is necessarily present in
 the child's memory/environment; privileged host processes can inspect that.
+The child also receives the key owner's username as `TRUENAS_API_USER` and
+connects with JSON-RPC 2.0 over verified TLS at `/api/current`.
 
 The Docker init process forwards signals and reaps orphaned children. Startup
 uses `exec` instead of a background shell. Compose allows 30 seconds for shutdown,
@@ -86,7 +88,10 @@ triggers it. Offline fixtures separately exercise the official stdio server.
 
 ## Permissions and data exposure
 
-The bridge does not filter upstream tools or add an authorization layer. A
+The bridge does not add its own tool filter or authorization layer. Upstream
+0.0.7 enforces its built-in destructive-operation confirmations. Its optional
+read-only/allow/deny flags are not exposed by this bridge's current settings;
+the explicit environment allowlist does not inherit them from the host. A
 Readonly Admin key limits API execution at TrueNAS; write tools can still be
 advertised by the upstream catalog and fail at authorization. ChatGPT approval
 settings do not replace TrueNAS role restrictions. Keep the initial key read-only.
@@ -102,11 +107,10 @@ Treat diagnostic output as private operational information.
 - Only TrueNAS and ChatGPT; no autonomous scheduling of administrative actions.
 - Only Linux ARM64/AMD64 image targets. Other platforms and Docker namespace modes
   are not claimed compatible.
-- The pinned TrueNAS MCP uses the older protocol at `/websocket`. TrueNAS calls
-  this the [legacy API](https://github.com/truenas/api_client#about), distinct
-  from JSON-RPC 2.0 at `/api/current`; both use WebSocket transport. Future servers
-  may remove the older endpoint. Migrating to the newer NAS API requires a
-  separately reviewed upstream MCP upgrade.
+- The pinned TrueNAS MCP requires TrueNAS 25.04+ and uses JSON-RPC 2.0 at
+  `/api/current`, with `auth.login_ex` and an explicit API key owner. The old
+  `/websocket` protocol is not used. Upstream compatibility claims are distinct
+  from this project's [verification results](verification.md).
 - TLS preflight verifies the front-facing certificate, never the reverse proxy's
   backend hop. Secure that hop before supplying a key.
 - A host operations lock serializes this checkout's scripts. It cannot discover
