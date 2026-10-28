@@ -89,3 +89,22 @@ ChatGPT plugin worked. This completes real-service acceptance for the deployed
 Linux ARM64 bridge. The AMD64 runtime and host memory-limit limitations recorded
 above remain unchanged; this result does not certify other TrueNAS versions or
 account/workspace configurations.
+
+## Guided first-install acceptance (2026-10-28)
+
+The guided `install` command passed 17 unit tests, including rejection of an
+existing deployment, validation before startup, explicit single-client
+confirmation, and recovery of saved settings/credentials after interrupted
+hidden input. The isolated Docker fixture also passed native execution,
+restart, candidate replacement, rollback and graceful shutdown using the
+existing local runtime image; no runtime image changes were needed for this CLI
+addition.
+
+The operator stopped the original deployment and tested a fresh checkout under
+a separate Compose project and image tag, reusing the tunnel without concurrent
+clients. Initial health failures showed successful NAS reads but no successful
+tunnel polling; tunnel logs identified a rejected OpenAI runtime credential.
+After supplying working credentials locally, the operator reported success and
+then confirmed a further installation from scratch worked. This is
+operator-reported first-install acceptance, not a new architecture or TrueNAS
+compatibility claim. No credentials or private identifiers are recorded here.
