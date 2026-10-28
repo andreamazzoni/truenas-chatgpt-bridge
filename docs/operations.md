@@ -15,6 +15,27 @@ python3 scripts/bridge.py stop
 docker compose logs --tail 100 bridge
 ```
 
+`status` and `probe` print readable reports by default. They separate container
+state, tunnel process liveness, startup readiness, recent OpenAI polling and the
+NAS read result. `status` performs no NAS request: it labels the previous result
+as saved and shows its UTC timestamp and age. An old successful result is not
+evidence that the NAS is reachable now. Use `probe` for a fresh read-only check.
+Neither command can establish whether a ChatGPT call succeeded.
+
+Scripts that consumed the previous JSON output must now request it explicitly:
+
+```sh
+python3 scripts/bridge.py status --json
+python3 scripts/bridge.py probe --json
+```
+
+The runtime JSON schema and its exit codes are preserved: `status` returns zero
+when its runtime report is available, even if a reported check is unhealthy;
+`probe` returns success based on the fresh NAS result, independently of tunnel
+readiness. Readable output also reports a stopped or absent container without
+attempting a NAS request and returns a nonzero exit code. Direct container
+runtime commands and Docker health checks continue to use JSON.
+
 The confirmation flag means the operator has stopped any previous host's stdio
 tunnel. Docker starts this deployment automatically after host/daemon restart if
 it was running. `stop` intentionally suppresses that restart until started again.

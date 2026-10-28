@@ -2,6 +2,7 @@
 """Host operations. All paths are relative to this checkout, not the shell cwd."""
 import argparse
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import fcntl
 import json
 import os
@@ -15,6 +16,60 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL = ROOT / ".local"
+
+
+def readable_report(report, command):
+    lines = ["Container: running",
+             "Tunnel process: " + ("responding" if report["process_live"] else "not responding"),
+             "Tunnel startup: " + ("ready" if report["startup_ready"] else "not ready")]
+    age = report["poll_age_seconds"]
+    if report["tunnel_ready"]:
+        tunnel = "connected (recent successful polling)"
+    elif age is None:
+        tunnel = "not ready (no successful polling observed)"
+    else:
+        tunnel = "not ready"
+    lines.append("OpenAI tunnel: " + tunnel)
+    if age is not None:
+        lines.append(f"Last successful tunnel poll: {age:.0f} seconds ago")
+    nas = report.get("nas_probe")
+    if nas is None:
+        lines.append("NAS: no saved check; run python3 scripts/bridge.py probe")
+    else:
+        label = "NAS read check" if command == "probe" else "NAS last saved read check"
+        lines.append(label + ": " + ("succeeded" if nas["ok"] else "failed"))
+        stamp = nas["checked_at"]
+        checked = datetime.fromtimestamp(stamp, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        elapsed = max(0, int(time.time() - stamp))
+        lines.append(f"NAS checked at: {checked} ({elapsed} seconds ago)")
+        if command == "status":
+            lines.append("Saved result only; status does not contact the NAS. Run probe for a fresh check.")
+    lines.append("ChatGPT call: not verified by this check; test system_info from ChatGPT.")
+    return "\n".join(lines)
+
+
+def show_report(command, *, json_output=False):
+    if not json_output:
+        cid = compose("ps", "-aq", "bridge", capture=True).stdout.strip()
+        state = execute(["docker", "inspect", "--format", "{{.State.Status}}", cid], capture=True).stdout.strip() if cid else None
+        if state != "running":
+            labels = {None: "not installed", "exited": "stopped", "created": "not started",
+                      "restarting": "restarting", "paused": "paused", "dead": "dead", "removing": "being removed"}
+            print("Container: " + labels.get(state, "unavailable"))
+            print("Tunnel and NAS: not checked; the bridge must be running.")
+            print("ChatGPT call: not verified by this check.")
+            return 1
+    result = compose("exec", "-T", "bridge", "python", "/opt/bridge/runtime.py", command,
+                     capture=True, check=False)
+    if json_output:
+        # Keep the runtime's original JSON and exit code for existing scripts.
+        sys.stdout.write(result.stdout)
+    else:
+        try:
+            print(readable_report(json.loads(result.stdout), command))
+        except (ValueError, KeyError, TypeError, OverflowError, OSError):
+            raise RuntimeError("Bridge status unavailable; check that the container is running and retry.") from None
+    return result.returncode
 
 
 @contextmanager
@@ -172,7 +227,10 @@ def main():
     parser.add_argument("command", choices=["install", "reset", "build", "validate", "start", "stop", "status", "probe", "restart", "update", "rollback"])
     parser.add_argument("--image", help="Locally built, unique candidate image tag for update")
     parser.add_argument("--single-instance-confirmed", action="store_true", help="Operator has stopped any previous host using this tunnel")
+    parser.add_argument("--json", action="store_true", help="Original JSON output for status or probe")
     args = parser.parse_args()
+    if args.json and args.command not in ("status", "probe"):
+        parser.error("--json is only available for status and probe")
     with checkout_lock():
         cmd = args.command
         if cmd == "reset":
@@ -196,7 +254,7 @@ def main():
         elif cmd == "stop":
             compose("stop", "bridge")
         elif cmd in ("status", "probe"):
-            compose("exec", "-T", "bridge", "python", "/opt/bridge/runtime.py", cmd)
+            return show_report(cmd, json_output=args.json)
         elif cmd == "restart":
             compose("restart", "bridge")
             wait_healthy()
@@ -227,7 +285,7 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        sys.exit(main())
     except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
         print(str(error) if isinstance(error, RuntimeError) else "Operation failed; check local files and Docker status", file=sys.stderr)
         sys.exit(1)

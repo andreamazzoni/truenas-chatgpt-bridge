@@ -119,3 +119,13 @@ container and network were removed, its configuration and fake credentials were
 deleted, and its Compose source and runtime image were preserved. This used the
 existing local runtime image; only host-side CLI code changed. No reset of the
 real deployment or deletion of real credentials was performed by these tests.
+
+## Readable status verification (2026-10-28)
+
+The suite passed 36 unit tests after making host-side `status` and `probe`
+readable by default. Coverage includes cached NAS results, absent probes,
+missing/stale polling, stopped containers, failed probes and preservation of
+the original runtime output and exit codes through `--json`. The isolated Docker
+fixture verified both readable and JSON reports for each command, followed by
+the existing restart, rollback and reset checks. The runtime image and Docker
+health output are unchanged; these checks do not establish a real ChatGPT call.

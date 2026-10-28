@@ -4,6 +4,8 @@
 Requires Docker and host openssl. Uses only local images, internal networking.
 """
 import importlib.util
+from contextlib import redirect_stdout
+import io
 import json
 import os
 from pathlib import Path
@@ -58,6 +60,16 @@ def main():
             ops.compose("up", "-d", "--no-build", "--pull", "never")
             ops.wait_healthy()
             print("PASS: native container, TLS, official MCP initialize/list/system_info, tunnel polling and health")
+            for command in ("status", "probe"):
+                with redirect_stdout(io.StringIO()) as output:
+                    assert ops.show_report(command) == 0
+                assert "OpenAI tunnel: connected" in output.getvalue()
+                assert "ChatGPT call: not verified" in output.getvalue()
+                with redirect_stdout(io.StringIO()) as output:
+                    assert ops.show_report(command, json_output=True) == 0
+                report = json.loads(output.getvalue())
+                assert report["tunnel_ready"] and report["nas_probe"]["ok"]
+            print("PASS: readable status/probe and original JSON reports")
             cid = ops.compose("ps", "-q", "bridge", capture=True).stdout.strip()
             before = json.loads(ops.execute(["docker", "inspect", cid], capture=True).stdout)[0]
             assert before["HostConfig"]["ReadonlyRootfs"]

@@ -156,10 +156,16 @@ python3 scripts/bridge.py probe
 ```
 
 The flag confirms that you checked for another instance; the script cannot check
-other hosts for you. `start` waits up to 180 seconds for health. In the JSON
+other hosts for you. `start` waits up to 180 seconds for health. `status` and
+`probe` show a readable report separating the container, tunnel process, startup,
+recent polling and NAS read result. `status` labels the NAS result as saved and
+shows its timestamp; `probe` performs a fresh, read-only `system.info` call and
+prints its success status rather than your NAS information. Neither command
+verifies the full ChatGPT path.
+
+For scripts or structured diagnostics, add `--json` to either command. In those
 reports, look for `process_live` and `tunnel_ready` set to `true`, plus
-`"ok": true` inside `nas_probe`. `probe` performs a fresh, read-only `system.info` call and prints its
-success status rather than your NAS information.
+`"ok": true` inside `nas_probe`.
 
 ### 4. Try your first ChatGPT question
 
@@ -186,6 +192,7 @@ Pick the command for the job:
 | See container state | `docker compose ps` |
 | See tunnel health and the last NAS probe | `python3 scripts/bridge.py status` |
 | Run a fresh read-only NAS probe | `python3 scripts/bridge.py probe` |
+| Get the original structured report | `python3 scripts/bridge.py status --json` |
 | Read recent logs | `docker compose logs --tail 100 bridge` |
 | Restart and wait for health | `python3 scripts/bridge.py restart` |
 | Stop the bridge | `python3 scripts/bridge.py stop` |
@@ -224,7 +231,8 @@ hostnames or identifiers.
 ## What the health checks mean
 
 Health separates three useful questions: is the process alive, is the tunnel
-polling, and can the NAS answer a read-only request?
+polling, and can the NAS answer a read-only request? The following fields are
+available in `status --json`, `probe --json` and the Docker health report.
 
 | Field | Evidence |
 | --- | --- |
