@@ -92,6 +92,11 @@ def main():
                 tls_check(cfg, staged)
     finally:
         os.unlink(check_name)
+    # Save validated non-secret settings before hidden input so an interrupted
+    # first installation can reuse them, including its selected certificate.
+    if certificate is not None:
+        private_write(directory / "truenas-ca.pem", certificate)
+    private_write(path, json.dumps(cfg, indent=2) + "\n")
     for name, label in (("openai_api_key", "Existing OpenAI runtime key"), ("truenas_api_key", "Existing TrueNAS API key")):
         target = credentials / name
         if target.exists():
@@ -102,9 +107,6 @@ def main():
         if not value or len(value) > 4096 or not value.isascii() or any(not 33 <= ord(c) <= 126 for c in value):
             raise ConfigError("Invalid credential token; value not displayed")
         private_write(target, value + "\n")
-    if certificate is not None:
-        private_write(directory / "truenas-ca.pem", certificate)
-    private_write(path, json.dumps(cfg, indent=2) + "\n")
     env = ROOT / ".env"
     if not env.exists():
         private_write(env, f"BRIDGE_UID={os.getuid()}\nBRIDGE_GID={os.getgid()}\n")

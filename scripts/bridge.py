@@ -72,9 +72,41 @@ def select_image(image):
     (LOCAL / "current-image").write_text(image + "\n")
 
 
+def install():
+    """First installation only; reuse build cache and saved setup on retries."""
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        raise RuntimeError("Install requires a local interactive terminal with hidden input")
+    if os.getuid() == 0:
+        raise RuntimeError("Run install as the non-root user who will operate Compose")
+    print("Checking Docker and Compose...", flush=True)
+    execute(["docker", "info"], capture=True)
+    execute(["docker", "compose", "version"], capture=True)
+    execute(["docker", "buildx", "version"], capture=True)
+    if compose("ps", "-aq", "bridge", capture=True).stdout.strip():
+        raise RuntimeError("A bridge container already exists. Use status, start, restart or update to manage it; install leaves it unchanged.")
+    print("Step 1/4: Building the local image (retries reuse Docker's build cache).", flush=True)
+    compose("build", "bridge")
+    print("Step 2/4: Guided configuration. Existing settings and keys are kept; Enter accepts saved settings.", flush=True)
+    execute([sys.executable, str(ROOT / "scripts/setup.py")])
+    print("Step 3/4: Checking Compose, credential access and verified TLS.", flush=True)
+    compose("config", "--quiet")
+    compose("run", "--rm", "--no-deps", "bridge", "validate")
+    print("Step 4/4: Start the tunnel. Only one client may use this tunnel ID, including on other hosts.", flush=True)
+    answer = input("Have you stopped any previous client and disabled its automatic relaunch? Type 'yes' to start: ").strip().lower()
+    if answer != "yes":
+        print("Not started. Configuration saved. Rerun install when ready, or use start --single-instance-confirmed after checking other clients.")
+        return
+    compose("up", "-d", "--no-build", "--pull", "never", "bridge")
+    wait_healthy()
+    print("Bridge healthy: tunnel polling and a read-only NAS probe succeeded.\n"
+          "Next: enable your personal ChatGPT plugin on this tunnel and ask:\n"
+          "Use the TrueNAS system_info tool to tell me the system version. Do not make any changes.\n"
+          "The ChatGPT call is still required to verify the full connection.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["build", "validate", "start", "stop", "status", "probe", "restart", "update", "rollback"])
+    parser.add_argument("command", choices=["install", "build", "validate", "start", "stop", "status", "probe", "restart", "update", "rollback"])
     parser.add_argument("--image", help="Locally built, unique candidate image tag for update")
     parser.add_argument("--single-instance-confirmed", action="store_true", help="Operator has stopped any previous host using this tunnel")
     args = parser.parse_args()
@@ -82,7 +114,9 @@ def main():
     with (LOCAL / "operations.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         cmd = args.command
-        if cmd == "build":
+        if cmd == "install":
+            install()
+        elif cmd == "build":
             compose("build", "bridge")
         elif cmd == "validate":
             execute([sys.executable, str(ROOT / "scripts/setup.py"), "--validate"])
@@ -131,4 +165,7 @@ if __name__ == "__main__":
         main()
     except (RuntimeError, OSError, ValueError, subprocess.CalledProcessError) as error:
         print(str(error) if isinstance(error, RuntimeError) else "Operation failed; check local files and Docker status", file=sys.stderr)
+        sys.exit(1)
+    except (EOFError, KeyboardInterrupt):
+        print("\nInterrupted. Saved settings and keys are kept. Rerun install if no bridge container exists; otherwise check status before using start or restart.", file=sys.stderr)
         sys.exit(1)

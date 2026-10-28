@@ -70,6 +70,15 @@ or submit a public plugin.
 
 ## Hidden local configuration
 
+For a first installation, `python3 scripts/bridge.py install` guides you through
+build, setup, validation and startup in one local terminal session. It refuses
+to alter an existing bridge container and requires explicit confirmation that
+any previous tunnel client has been stopped before starting. On retries it
+reuses Docker's build cache and the settings/keys already saved by setup.
+After startup, verify the full connection with a read-only ChatGPT call.
+
+To configure separately without starting a tunnel:
+
 Run on the clone host, in a private interactive terminal:
 
 ```sh

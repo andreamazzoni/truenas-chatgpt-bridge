@@ -77,7 +77,32 @@ can see. More on [certificates and hostname](docs/setup.md#certificates-and-host
 Clone or download this repository onto your Linux host, then open a terminal in
 the `truenas-chatgpt-bridge` directory. Run the commands below from that directory.
 
-### 1. Build the image
+### Recommended: one guided command
+
+In a local interactive terminal, run:
+
+```sh
+python3 scripts/bridge.py install
+```
+
+This checks Docker, Compose and Buildx, builds the local image, walks through
+configuration, validates certificate trust and credential access, then asks for
+confirmation before starting the tunnel. Confirm only after checking that no
+other client is using this tunnel ID, including on another host. Keys are entered
+only at hidden terminal prompts. The account, key and tunnel preparation above
+still applies; the installer does not create them or configure ChatGPT for you.
+
+If interrupted before startup, rerun the same command: Docker reuses its build
+cache, saved settings become prompt defaults, and existing keys are kept. If a
+bridge container already exists, the installer leaves it unchanged and directs
+you to the day-to-day commands. After a startup failure or interruption, check
+`status` before using `start` or `restart` as appropriate. The installer waits for
+tunnel and NAS health, then tells you how to perform the ChatGPT check in step 4
+below. That final call remains a manual verification.
+
+The individual steps below are also available for manual operation.
+
+### 1. Build the image manually
 
 ```sh
 python3 scripts/bridge.py build
