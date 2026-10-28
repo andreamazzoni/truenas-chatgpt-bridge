@@ -20,8 +20,7 @@ TrueNAS permissions control which actions are allowed. Use a dedicated account;
 pass through OpenAI and ChatGPT. [Permissions and data exposure](docs/architecture.md#permissions-and-data-exposure).
 
 TrueNAS MCP is an upstream research preview. See [verified platforms and
-compatibility](docs/verification.md); real-service results for 0.0.6 do not
-establish acceptance of 0.0.7.
+compatibility](docs/verification.md) for build, fixture and operator acceptance results.
 
 ## Quick start
 

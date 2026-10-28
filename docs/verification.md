@@ -19,12 +19,19 @@ are recorded in `versions.lock.json` and `Dockerfile`.
 | Restart, update and rollback | Passed with the actual operations functions; 0.0.6 → 0.0.7 → 0.0.6 restored the exact image and original settings schema/public CA |
 | Health/reporting and reset | Readable and JSON reports, graceful shutdown and repeated reset passed in temporary Compose projects |
 | Credential exclusion | Audit passed tracked paths, pins, non-root image configuration and ignored canary rebuild/layer scan |
-| Real NAS, hosted tunnel and ChatGPT with 0.0.7 | Not yet tested; no production cutover or real credential changes were made |
+| Real NAS, hosted tunnel and ChatGPT with 0.0.7 | Operator confirmed successful upgrade, status/probe and the requested ChatGPT call after testing the candidate |
 
 The fixture accepts the legacy protocol only to test the retained 0.0.6 image;
 the new runtime exclusively uses `/api/current`. Upstream requires TrueNAS
 25.04+, but that minimum is not a verified real-service result for this bridge.
 The host memory-limit limitation recorded below remains unchanged.
+
+After the isolated checks, the operator reported that all requested deployment
+tests worked, including the real-service ChatGPT check. This is operator-reported
+acceptance of the 0.0.7 deployment; it does not establish AMD64 runtime support
+or compatibility with every TrueNAS release. The automated fixtures did not
+contact real services or change real credentials. Real-service rollback was
+not separately reported; its image/configuration recovery was verified offline.
 
 Reproduce the migration test with separately retained local images:
 
