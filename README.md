@@ -1,6 +1,8 @@
 # truenas-chatgpt-bridge
 
-Ask ChatGPT how your TrueNAS is doing. This project runs the official
+Inspect and manage your TrueNAS from ChatGPT: ask about your system, create
+datasets, or start and stop apps through the tools your NAS account permits.
+This project runs the official
 [TrueNAS MCP server](https://github.com/truenas/truenas-mcp/tree/v0.0.6) and
 [OpenAI Secure MCP Tunnel client](https://github.com/openai/tunnel-client/tree/v0.0.18)
 in one Docker Compose container on your Linux host, without opening inbound
@@ -17,9 +19,12 @@ internet ports. It does not run an autonomous agent or publish a public plugin.
   TLS certificate. With a reverse proxy, secure both hops, including
   **proxy → TrueNAS**; see [certificate setup](docs/setup.md#certificates-and-hostname).
 
-**Start with a dedicated Readonly Admin account.** The bridge passes through
-management tools as well as queries: a key with write permissions can change
-TrueNAS. Requests and NAS results travel through OpenAI and ChatGPT. Read the
+**Choose a dedicated account with permissions for the tasks you want.** The
+bridge exposes the official MCP's query and management tools; TrueNAS enforces
+the account's permissions. For the first connection, we recommend **Readonly
+Admin** so you can try it without changing NAS state. For management tasks,
+grant the permissions those tasks require. Requests and NAS results travel
+through OpenAI and ChatGPT. Read the
 [permissions and data exposure notes](docs/architecture.md#permissions-and-data-exposure).
 
 Linux ARM64 has been tested through a real read-only ChatGPT call. The AMD64
@@ -54,12 +59,16 @@ For prompt explanations or individual commands, see [manual setup](docs/setup.md
 
 Add or reuse a personal custom MCP plugin with **Tunnel** as the connection,
 selecting the same tunnel ID. Follow the [portal steps](docs/setup.md#openai-portal-and-personal-chatgpt-plugin)
-for access and setup; refresh existing tools if needed. Enable the plugin and ask:
+for access and setup; refresh existing tools if needed. For a first check that
+does not change NAS state, enable the plugin and ask:
 
 > Use the TrueNAS `system_info` tool to tell me the system version. Do not make any changes.
 
 A successful tool call verifies the full connection. Container health alone
 does not prove that a ChatGPT call works.
+
+You can then use the plugin for management tasks supported by the pinned MCP
+version and your account's permissions. The bridge adds no read-only filter.
 
 ## Daily commands
 
