@@ -108,3 +108,14 @@ After supplying working credentials locally, the operator reported success and
 then confirmed a further installation from scratch worked. This is
 operator-reported first-install acceptance, not a new architecture or TrueNAS
 compatibility claim. No credentials or private identifiers are recorded here.
+
+## Local reset verification (2026-10-28)
+
+The suite passed 28 unit tests after adding the confirmed `reset` command,
+including cancellation, Docker failure, filesystem failure, checkout ownership,
+symlink boundaries and locking while local state is removed. The isolated Docker
+fixture passed restart/rollback and then ran reset twice: the temporary project's
+container and network were removed, its configuration and fake credentials were
+deleted, and its Compose source and runtime image were preserved. This used the
+existing local runtime image; only host-side CLI code changed. No reset of the
+real deployment or deletion of real credentials was performed by these tests.

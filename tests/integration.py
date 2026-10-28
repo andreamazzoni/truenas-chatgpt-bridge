@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import uuid
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("operations", ROOT / "scripts/bridge.py")
@@ -93,6 +94,17 @@ def main():
             stopped = json.loads(ops.execute(["docker", "inspect", ops.compose("ps", "-aq", "bridge", capture=True).stdout.strip()], capture=True).stdout)[0]
             assert stopped["State"]["ExitCode"] == 0, "Graceful tunnel shutdown failed"
             print("PASS: no credential in logs/config, tunnel shutdown exit 0")
+            # Reset only this temporary project, with fake secrets. Preserve
+            # the code and local images, and exercise a second reset as well.
+            sys.argv = ["bridge.py", "reset"]
+            with patch.object(sys.stdin, "isatty", return_value=True), patch.object(sys.stderr, "isatty", return_value=True), patch("builtins.input", return_value="RESET"):
+                ops.main()
+                ops.main()
+            for name in (".env", "config/local", "secrets", ".local"):
+                assert not (folder / name).exists(), "Reset left private local state"
+            assert (folder / "compose.yaml").is_file()
+            run(["docker", "image", "inspect", previous])
+            print("PASS: confirmed reset removes project resources and private files, preserves code/images, and can be repeated")
         except Exception:
             logs = ops.compose("logs", "--no-color", capture=True, check=False).stdout
             print(logs.replace(token, "[FIXTURE-REDACTED]")[-12000:], file=sys.stderr)

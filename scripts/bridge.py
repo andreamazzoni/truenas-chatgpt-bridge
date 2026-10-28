@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Host operations. All paths are relative to this checkout, not the shell cwd."""
 import argparse
+from contextlib import contextmanager
 import fcntl
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +15,18 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL = ROOT / ".local"
+
+
+@contextmanager
+def checkout_lock():
+    # Lock the checkout inode: reset can remove .local without making a second
+    # lock file available to another concurrent operation.
+    fd = os.open(ROOT, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+    finally:
+        os.close(fd)
 
 
 def execute(args, *, capture=False, check=True):
@@ -104,16 +118,67 @@ def install():
           "The ChatGPT call is still required to verify the full connection.")
 
 
+def reset():
+    """Remove this deployment and its private local files, never read secrets."""
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        raise RuntimeError("Reset requires a local interactive terminal and explicit confirmation")
+    if os.getuid() == 0:
+        raise RuntimeError("Run reset as the non-root user who operates Compose")
+    # Keep project/image selection until other deletion has succeeded, so a
+    # filesystem failure can be retried against the same Compose project.
+    targets = [ROOT / "config/local", ROOT / "secrets", LOCAL, ROOT / ".env"]
+    for path in [ROOT / "config", *targets]:
+        if path.is_symlink():
+            raise RuntimeError("Reset refused: local configuration paths must not be symlinks")
+    cfg = json.loads(compose("config", "--format", "json", capture=True).stdout)
+    project = cfg["name"]
+    selector = "label=com.docker.compose.project=" + project
+
+    def container_ids():
+        return execute(["docker", "ps", "-aq", "--filter", selector], capture=True).stdout.split()
+
+    # Compose project names are shared across checkouts. Do not remove another
+    # installation just because its project name matches this one.
+    for cid in container_ids():
+        labels = json.loads(execute(["docker", "inspect", "--format", "{{json .Config.Labels}}", cid], capture=True).stdout)
+        if (labels.get("com.docker.compose.project.working_dir") != str(ROOT)
+                or labels.get("com.docker.compose.project.config_files") != str(ROOT / "compose.yaml")):
+            raise RuntimeError("Reset refused: this Compose project includes containers from another checkout. Use its original checkout or a separate project name.")
+    print(f"Reset checkout: {ROOT}\nCompose project: {project}\n"
+          "Will stop and remove this project's containers and non-external networks.\n"
+          "Will delete .env, config/local/, secrets/ (including backups), and .local/.\n"
+          "Code, Git history and Docker images are kept. Keys are not revoked; deletion is not secure erasure.", flush=True)
+    if input("Type RESET to permanently remove this local deployment: ").strip() != "RESET":
+        print("Reset cancelled. Nothing removed.")
+        return
+    try:
+        compose("down", "--remove-orphans")
+        networks = execute(["docker", "network", "ls", "-q", "--filter", selector], capture=True).stdout.strip()
+        if container_ids() or networks:
+            raise RuntimeError("Reset stopped: Docker resources remain. Local settings and credentials were kept; check Docker and retry.")
+    except subprocess.CalledProcessError:
+        raise RuntimeError("Reset stopped: Docker cleanup failed. Local settings and credentials were kept; check Docker and retry.") from None
+    for path in targets:
+        if path.is_symlink() or not path.is_dir():
+            path.unlink(missing_ok=True)
+        else:
+            shutil.rmtree(path)
+    print("Reset complete. Run python3 scripts/bridge.py install to configure again.\n"
+          "If you exported COMPOSE_PROJECT_NAME or BRIDGE_IMAGE, they remain set in your shell.")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["install", "build", "validate", "start", "stop", "status", "probe", "restart", "update", "rollback"])
+    parser.add_argument("command", choices=["install", "reset", "build", "validate", "start", "stop", "status", "probe", "restart", "update", "rollback"])
     parser.add_argument("--image", help="Locally built, unique candidate image tag for update")
     parser.add_argument("--single-instance-confirmed", action="store_true", help="Operator has stopped any previous host using this tunnel")
     args = parser.parse_args()
-    LOCAL.mkdir(mode=0o700, exist_ok=True)
-    with (LOCAL / "operations.lock").open("w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    with checkout_lock():
         cmd = args.command
+        if cmd == "reset":
+            reset()
+            return
+        LOCAL.mkdir(mode=0o700, exist_ok=True)
         if cmd == "install":
             install()
         elif cmd == "build":
@@ -167,5 +232,5 @@ if __name__ == "__main__":
         print(str(error) if isinstance(error, RuntimeError) else "Operation failed; check local files and Docker status", file=sys.stderr)
         sys.exit(1)
     except (EOFError, KeyboardInterrupt):
-        print("\nInterrupted. Saved settings and keys are kept. Rerun install if no bridge container exists; otherwise check status before using start or restart.", file=sys.stderr)
+        print("\nInterrupted. Check Docker status before continuing. Install/reset can be retried; reset may have partially completed cleanup.", file=sys.stderr)
         sys.exit(1)

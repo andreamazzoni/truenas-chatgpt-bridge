@@ -189,6 +189,7 @@ Pick the command for the job:
 | Read recent logs | `docker compose logs --tail 100 bridge` |
 | Restart and wait for health | `python3 scripts/bridge.py restart` |
 | Stop the bridge | `python3 scripts/bridge.py stop` |
+| Remove this deployment and its local settings/keys | `python3 scripts/bridge.py reset` |
 
 Docker restarts exited containers with `unless-stopped`, including after an
 ordinary host restart. An intentional stop keeps the bridge stopped until you
@@ -196,6 +197,14 @@ start it again. An `unhealthy` status alone does not restart a running container
 For upgrades, use the [update and rollback guide](docs/operations.md), which
 retains the previous working image before replacing it. Rolling back the bridge
 does not undo changes already made to TrueNAS.
+
+To start over, `reset` shows the checkout and resolved Compose project and asks
+you to type `RESET`. It removes that project's containers and non-external
+networks first, then deletes `.env`, `config/local/`, `secrets/` (including any
+backup files inside it), and `.local/`. If Docker cleanup fails, local files are
+kept. Code, Git history, Docker images and build cache remain available for a
+new `install`. The command refuses containers belonging to another checkout
+with the same Compose project name. See [reset details](docs/operations.md#reset-a-local-installation).
 
 ## If something gets stuck
 

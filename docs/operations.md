@@ -81,6 +81,41 @@ if stronger retention is needed. Never push them to a public registry.
 **Rolling back the bridge does not undo any changes already made to TrueNAS.**
 It also does not restore revoked/expired keys or portal permissions.
 
+## Reset a local installation
+
+In a local interactive terminal, run:
+
+```sh
+python3 scripts/bridge.py reset
+```
+
+The command displays the checkout, resolved Compose project and files to delete.
+Type the exact word `RESET` to confirm; any other answer cancels without changes.
+Use the same `COMPOSE_PROJECT_NAME` environment setting, if any, that you used
+when installing. Reset refuses containers from another checkout sharing that
+project name. It rejects symlinked configuration paths rather than following
+them outside the checkout. Internal symlinks are removed without deleting their
+targets.
+
+Reset runs Compose `down --remove-orphans` and verifies that no containers or
+Compose-owned networks remain for that project. If Docker cleanup fails, local
+configuration and credentials are kept for recovery. Once cleanup succeeds, it
+deletes `.env`, `config/local/`, `secrets/` (including backups stored there), and
+`.local/` with its rollback metadata. This does not require working credentials,
+NAS reachability or a healthy tunnel. An interrupted reset can be retried;
+filesystem errors may leave partial local cleanup.
+
+Repository files, Git history, Docker images/build cache and external networks
+are preserved. No global Docker prune is run. The checkout lock remains held
+through deletion, preventing another current CLI operation in this checkout
+from starting during reset. Coordinate other checkouts and manually started
+clients separately. Reset does not revoke keys, delete the OpenAI tunnel or
+ChatGPT plugin, undo NAS changes, or guarantee secure erasure from disk/backups.
+
+After reset, `python3 scripts/bridge.py install` starts configuration again.
+Exported `COMPOSE_PROJECT_NAME` and `BRIDGE_IMAGE` variables remain in the current
+shell; keep or unset them deliberately before reinstalling or switching projects.
+
 ## Backup categories
 
 | Category | Include | Restore method |
