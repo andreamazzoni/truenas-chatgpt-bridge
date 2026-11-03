@@ -1,5 +1,8 @@
 # Project principles
 
+- GitHub repository: https://github.com/andreamazzoni/truenas-chatgpt-bridge
+  (private, remote `github`, default branch `main`). The configured private
+  `origin` remains the only push destination under the policy below.
 - Scope: a generic, self-hosted TrueNAS to ChatGPT bridge using the official
   TrueNAS MCP server and OpenAI Secure MCP Tunnel. No autonomous agent, other
   backends, public plugin, or public registry publishing.

@@ -1,8 +1,20 @@
 # truenas-chatgpt-bridge
 
-Inspect and manage TrueNAS from ChatGPT: query system information, create datasets,
-and start or stop apps. Runs the official components in one Docker Compose
-container, without opening inbound internet ports.
+Create a private **TrueNAS plugin for ChatGPT** that you can enable in a chat
+to inspect and manage your self-hosted TrueNAS. The Docker Compose bridge runs
+the official components and connects the plugin through OpenAI Secure MCP
+Tunnel, without opening inbound internet ports.
+
+## Example prompts
+
+Enable the TrueNAS plugin in a ChatGPT conversation and try these read-only
+requests with a Readonly Admin account:
+
+- **Check the version.** “Use TrueNAS `system_info` to tell me the system
+  version. Do not make any changes.”
+- **Review system information.** “Use TrueNAS `system_info` to summarize the
+  system information available, including the version and uptime if provided.
+  Do not make any changes.”
 
 | Component | Pinned version |
 | --- | --- |
@@ -35,8 +47,9 @@ at hidden prompts; they are stored in private, unencrypted files under `secrets/
 excluded from Git and the image. **Stop any previous client and disable its
 automatic relaunch before confirming startup: one client per tunnel ID.**
 
-In ChatGPT, add or reuse a personal MCP plugin with **Tunnel** and the same ID
-([setup steps](docs/setup.md#openai-portal-and-personal-chatgpt-plugin)). Enable it and try:
+In ChatGPT, add a custom MCP server named **TrueNAS** or reuse your personal
+plugin, choose **Tunnel** and the same ID, then enable the plugin in a chat
+([setup steps](docs/setup.md#openai-portal-and-personal-chatgpt-plugin)). Try:
 
 > Use TrueNAS `system_info` to tell me the system version. Do not make any changes.
 
