@@ -1,77 +1,83 @@
-# Setup and coordinated cutover
+# Setup
+
+Start with the [quickstart](../README.md#quickstart). Use one active client per
+tunnel ID, including when moving between hosts.
 
 ## TrueNAS portal
 
-Reuse an appropriate existing account and API key. In the TrueNAS web interface,
-inspect the dedicated user's roles and existing API key under Credentials / Users
-and API Keys (menu labels vary by release). The initial baseline is **Readonly
-Admin**. The bridge does not create accounts, generate keys, change roles, or
-change TrueNAS settings. If the existing key cannot be recovered, the operator
-must manage its replacement in TrueNAS; do not grant broader rights to solve a
-permission failure.
+1. In the TrueNAS web interface, check the dedicated user's roles and API key
+   under **Credentials → Users** and **API Keys**. Menu labels vary by release.
+2. Start with **Readonly Admin**. Have the username and its API key ready.
+   If the key is unavailable, manage its replacement in TrueNAS. Keep the same
+   permissions when troubleshooting access.
+3. Verify TLS before using the key. With a reverse proxy, both bridge → proxy
+   and proxy → TrueNAS must use verified TLS. Check the backend configuration
+   separately from the certificate the bridge sees. TrueNAS can revoke keys
+   presented over an unencrypted connection.
 
-The pinned MCP 0.0.7 requires TrueNAS 25.04 or later and uses `/api/current`
-with JSON-RPC 2.0 and `auth.login_ex`. It requires the API key owner's username
-as well as the key. There is no legacy-protocol fallback. Follow the
-[pinned source](https://github.com/truenas/truenas-mcp/tree/v0.0.7), not the
-upstream default branch.
+TrueNAS MCP 0.0.7 requires TrueNAS 25.04+ and authenticates with the key and its
+owner's username. [Pinned TrueNAS MCP source](https://github.com/truenas/truenas-mcp/tree/v0.0.7)
 
-API key authentication must use TLS. TrueNAS can revoke a key presented over
-unencrypted HTTP/WebSocket. With a reverse proxy, **both** client → proxy and
-proxy → TrueNAS must be HTTPS/WSS. A successful client TLS handshake cannot verify
-the proxy's backend configuration: inspect it independently before authenticating.
+## Create the tunnel
 
-## Certificates and hostname
+1. In the intended OpenAI Platform organization, create or reuse a tunnel and
+   copy its ID. Creating or editing tunnels requires **Tunnels Read + Manage**.
+2. Associate the tunnel with the target ChatGPT workspace so it is available
+   when you add the custom MCP server. The workspace must allow custom MCP plugins.
+3. Create or reuse a runtime API key with **Tunnels Read + Use**. This permission
+   also applies to the person selecting the tunnel in ChatGPT. Use a restricted
+   runtime key and keep the optional `org-…` ID handy if your organization needs it.
 
-Configure `nas.example.net`, an IPv4 address, `[IPv6]`, or a host with an explicit
-port. Do not include `https://`, a URL path, username, password, query or fragment.
-The bridge constructs the pinned upstream's supported `wss://host:port/api/current`
-URL to preserve non-default ports and IPv6. No `ws://` or insecure mode is offered.
+[Platform tunnel settings](https://platform.openai.com/settings/organization/tunnels) ·
+[Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) ·
+[Pinned client onboarding](https://github.com/openai/tunnel-client/blob/v0.0.18/docs/onboarding.md)
 
-For a publicly trusted certificate, leave the CA path blank. For a private CA or
-self-signed certificate, export its PEM certificate through a trusted TrueNAS UI
-session or an independently verified administrative channel. Verify its fingerprint
-and hostname/SAN before trusting it. Do not blindly trust a certificate obtained
-from an unauthenticated network connection. Setup copies the public PEM to
-`config/local/truenas-ca.pem`; no private certificate key belongs there.
+## Configure the host
 
-DNS must resolve on the clone host and inside Docker. Host-only DNS overrides and
-multicast `.local` names may not resolve from a container. Prefer routable DNS;
-if needed, configure a site-specific Compose override locally and protect it.
-The NAS certificate must match the configured hostname or IP SAN. A custom CA
-bundle replaces the NAS trust store for the pinned Go client.
+Run the [installer](../README.md#quickstart) in a private local terminal as
+the non-root user who operates Docker. It builds the pinned image, verifies the
+TrueNAS hostname and TLS, prompts for configuration and keys, validates
+Compose, and offers to start the tunnel. Use it for a first installation.
+It refuses to run if a bridge container already exists in this Compose
+project. Retries reuse saved setup and build cache.
 
-## OpenAI portal and personal ChatGPT plugin
+Enter a bare hostname or IP such as `nas.example.net`, `nas.example.net:8443`,
+or `[2001:db8::1]`. Leave out schemes, paths, user information, queries, and
+fragments. If using a reverse proxy, enter the hostname on its certificate.
+Both the host and the container must be able to resolve the name and reach it.
 
-Follow the [official Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
-and [tunnel-client onboarding](https://github.com/openai/tunnel-client/blob/v0.0.18/docs/onboarding.md).
-The stable build deliberately pins a reviewed release rather than following an
-upstream latest-release download link automatically.
+Enter each key at its hidden prompt. Keep keys out of chat, shell arguments,
+environment exports, logs, and screenshots. Press Enter to keep saved settings.
+Setup keeps existing key files in place. Enter `-` to clear the optional
+organization ID or return to system CA trust.
 
-1. Open [Platform tunnel settings](https://platform.openai.com/settings/organization/tunnels).
-   Reuse the existing tunnel ID and suitable runtime API key. Inspect its Platform
-   organization and target ChatGPT workspace associations.
-2. Creating/managing a tunnel requires **Tunnels Read + Manage**. Running the client
-   and selecting it for a plugin requires **Tunnels Read + Use**. Have the organization
-   administrator grant missing rights; do not use an administrator credential as
-   the container's runtime key. Set the organization ID in setup if required by your
-   tunnel's organization context.
-3. ChatGPT account/workspace access to custom MCP servers is a separate permission.
-   In ChatGPT **Plugins → + → Add custom MCP server**, choose **Tunnel**, then the
-   intended tunnel. Current UI wording and account policy may differ; use the
-   official guide. Complete any access and risk acknowledgment in the portal.
-4. For this stdio bridge the NAS key authenticates the private MCP child; do not
-   paste it into the ChatGPT plugin's URL or authentication fields. Configure the
-   personal tunnel connection according to the portal's offered authentication
-   flow. Review the actual discovered tools before enabling the plugin.
+| Git-ignored path | Contents |
+| --- | --- |
+| `config/local/settings.json` | NAS hostname and key owner, tunnel and organization IDs, CA selection |
+| `config/local/truenas-ca.pem` | Optional public PEM certificate |
+| `secrets/openai_api_key` | OpenAI runtime key |
+| `secrets/truenas_api_key` | TrueNAS API key |
+| `.env` | Operator UID/GID and optional image selection |
 
-These logins, permissions, associations and acknowledgments are manual steps;
-the bridge does not automate unsupported authorization flows. It does not create
-or submit a public plugin.
+Setup uses mode 0700 for private directories and 0600 for credential files.
+Secrets are stored as plaintext on disk. Compose mounts them read-only and
+runs the container with the operator's UID/GID. Check file access separately
+if using rootless Docker or user namespace remapping.
 
-## Manual installation and setup prompts
+### HTTPS with a private CA
 
-For separate build, configuration and startup steps, run from the checkout:
+For a publicly trusted certificate, leave the CA path blank on first setup.
+For a private CA or self-signed certificate, obtain its public PEM through a
+trusted administrative channel. Verify the fingerprint and check that the NAS
+certificate covers the configured hostname or IP in its SAN. Enter the local
+PEM path at the setup prompt. The pinned Go client uses this bundle as its
+trust store for TrueNAS.
+
+### Manual installation
+
+Run these steps from the checkout to build and validate without starting a
+tunnel. Validation checks Compose, file access, and TLS before any API
+authentication or tunnel polling.
 
 ```sh
 python3 scripts/bridge.py build
@@ -79,23 +85,8 @@ python3 scripts/setup.py
 python3 scripts/bridge.py validate
 ```
 
-The build downloads pinned upstream components and base images for the host's
-architecture. It needs no credentials; the first build can take a few minutes.
-Setup verifies hostname and TLS before asking for keys. Here is what to enter:
-
-| Prompt | What to enter |
-| --- | --- |
-| TrueNAS hostname or IP | For example, `nas.example.net` or `nas.example.net:8443`. Leave out `https://` and any path. If the certificate is on your reverse proxy, use the proxy's hostname. |
-| TrueNAS API key owner | The username of the TrueNAS account that owns the key. It is required by MCP 0.0.7; it is not the OpenAI account or the key itself. |
-| OpenAI tunnel ID | The tunnel ID from the OpenAI portal. |
-| Platform organization ID | Leave blank unless your tunnel requires an explicit `org-…` organization context. You can add it later. |
-| PEM CA/certificate path | On first setup, leave blank for a publicly trusted certificate. For a private CA or self-signed certificate, enter the local path to its independently verified public PEM certificate. |
-| OpenAI runtime key and TrueNAS API key | Enter each only at its hidden prompt. Keep keys out of chat, shell commands and `.env`. |
-
-Blank answers keep existing settings and keys are preserved. Enter `-` to clear
-the optional organization ID or return certificate trust to system CAs. Setup
-and validation do not start a tunnel. Once any previous client is stopped and
-its automatic relaunch disabled, start and check the bridge:
+After checking that no other client is using the tunnel or will automatically
+restart, start the bridge and check the connection.
 
 ```sh
 python3 scripts/bridge.py start --single-instance-confirmed
@@ -103,82 +94,27 @@ python3 scripts/bridge.py status
 python3 scripts/bridge.py probe
 ```
 
-The flag confirms the operator checked for other clients; the script cannot
-check other hosts. Startup waits up to 180 seconds for health. A successful NAS
-probe is a separate read-only check; complete the ChatGPT call described in the
-[quick start](../README.md#quick-start) to verify the full tool path.
+For an existing deployment, follow the relevant procedure for
+[key rotation](operations.md#rotate-a-key),
+[a host move](operations.md#coordinated-cutover), or
+[an upgrade from MCP 0.0.6](operations.md#upgrade-from-truenas-mcp-006).
 
-## Hidden local configuration
+## Connect the custom app in ChatGPT
 
-For a first installation, `python3 scripts/bridge.py install` guides you through
-build, setup, validation and startup in one local terminal session. It refuses
-to alter an existing bridge container and requires explicit confirmation that
-any previous tunnel client has been stopped before starting. On retries it
-reuses Docker's build cache and the settings/keys already saved by setup.
-After startup, verify the full connection with a read-only ChatGPT call.
+Keep the bridge running during discovery. Menu labels and access depend on
+your account and workspace policy.
 
-To configure separately without starting a tunnel:
+1. Open **Plugins → + → Add custom MCP server** in the target workspace.
+2. Name the plugin **TrueNAS** and choose **Tunnel** under **Connection**.
+   Select the intended tunnel or enter its ID.
+3. Select **No authentication** if the workspace offers it. The local stdio
+   server uses the mounted TrueNAS key for NAS authentication. Keep the key on
+   the bridge host.
+4. Complete the portal prompts, install the plugin, and review its discovered
+   tools. If reusing a plugin on the same tunnel, refresh its tools after
+   replacing the previous MCP server.
+5. Enable the plugin in a new chat using the app picker or `@TrueNAS`. Ask for
+   a read-only `system_info` call and compare the version with the TrueNAS UI.
 
-Run on the clone host, in a private interactive terminal:
-
-```sh
-python3 scripts/setup.py
-python3 scripts/bridge.py validate
-```
-
-Enter the two **existing** keys only at the hidden prompts. Do not place literal
-keys in shell commands, environment exports, screenshots, logs or chat. Secrets
-are not requested by any agent tool. Separate terminal sessions do not share
-exported variables; this deployment consistently reads mounted files instead.
-
-Setup creates ignored local files:
-
-| Path | Purpose | Backup category |
-| --- | --- | --- |
-| `config/local/settings.json` | NAS hostname and key owner, tunnel/org ID, CA selection | Private configuration |
-| `config/local/truenas-ca.pem` | Optional verified public trust material | Private configuration |
-| `secrets/openai_api_key` | OpenAI runtime credential, mode 0600 | Encrypted credentials backup |
-| `secrets/truenas_api_key` | Existing TrueNAS credential, mode 0600 | Encrypted credentials backup |
-| `.env` | Host UID/GID and optional local image selection; no keys | Private configuration |
-
-Directories are mode 0700. Files belong to the non-root operator. Compose local
-secrets are read-only bind mounts, **not encrypted at rest**. Compose cannot remap
-file ownership using the Swarm secret `uid` option; the container UID/GID matches
-the operator via `.env`. Docker administrators can access mounted credentials.
-Rootless Docker/user namespace remapping needs separate permission validation;
-it has not been tested.
-
-Rerunning setup preserves existing keys without reading them to the screen.
-When upgrading an active 0.0.6 deployment, use the staged
-[migration procedure](operations.md#upgrade-from-truenas-mcp-006) instead of
-rerunning setup against its mounted configuration.
-To replace a key, stop the bridge, move the old credential file to protected
-encrypted storage outside the checkout, rerun setup to enter the replacement, and
-recreate the container. Mounts can retain an old inode after an atomic file
-replacement; `docker compose restart` alone is insufficient for rotation.
-
-`validate` checks syntax, required files, ownership access in the container, and
-certificate verification without API authentication or tunnel polling. If setup
-partially fails, rerun after correcting TLS/files; it never starts the bridge.
-
-## Coordinated cutover
-
-1. Build the new image and complete setup/validation. Keep the old deployment
-   available. Verify the reverse proxy backend is encrypted, if applicable.
-2. Agree on a short cutover window. Stop the old tunnel-client and disable its
-   automatic relaunch. Confirm its process has exited. Do not run two clients on
-   one stdio tunnel, even if discovery appears to work.
-3. On the new host, run `python3 scripts/bridge.py start --single-instance-confirmed`.
-   Inspect `status`; run `probe` and require a successful NAS read check
-   (`nas_probe.ok: true` with `--json`).
-4. In ChatGPT, refresh/update the existing personal plugin's tools, especially if
-   it previously used a demo server. Verify the tools identify TrueNAS.
-5. Ask for a **read-only** `system_info` call (for example, the TrueNAS version).
-   The operator confirms the returned result in ChatGPT. Do not ask ChatGPT to
-   modify the NAS as an acceptance test.
-6. Test `restart`, then repeat the read-only plugin call. Record only non-sensitive
-   outcomes in the verification report.
-7. If reverting to the old host, stop the new bridge first, confirm it exited,
-   then start the old tunnel-client. Refresh the plugin tools if its catalog differs.
-
-The repository's automated fixtures do not complete steps 3–6 against real services.
+[Add a custom MCP server](https://developers.openai.com/api/docs/guides/custom-mcp-server) ·
+[Verification](verification.md)

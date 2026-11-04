@@ -1,7 +1,8 @@
 # Verification record
 
-This file separates build/fixture observations from real-service acceptance;
-it is not a general compatibility guarantee.
+The table below separates isolated build and fixture results from the
+operator-reported ChatGPT test. For a new installation, verify the plugin
+with a read-only call from your workspace. [Connection checks](operations.md#check-the-connection)
 
 ## Current sources: TrueNAS MCP 0.0.7 (2026-10-28)
 
