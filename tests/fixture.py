@@ -78,7 +78,12 @@ class NAS(socketserver.StreamRequestHandler):
                     authenticated = req.get("params") == [{"mechanism": "API_KEY_PLAIN", "username": "fixture-user", "api_key": expected}]
                     result = {"response_type": "SUCCESS" if authenticated else "AUTH_ERR"}
                 elif method == "system.info" and authenticated:
-                    result = {"version": "FIXTURE", "hostname": "fixture"}
+                    version_file = Path("/tmp/fixture-nas-version")
+                    try:
+                        version = version_file.read_text().strip()
+                    except FileNotFoundError:
+                        version = "TrueNAS-SCALE-25.10.8"
+                    result = {"version": version, "hostname": "FIXTURE"}
                 else:
                     send(self.wfile, {"id": req.get("id"), **({"msg": "result"} if legacy else {"jsonrpc": "2.0"}), "error": {"code": -32000, "message": "fixture rejected method"}})
                     continue

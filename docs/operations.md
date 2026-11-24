@@ -56,10 +56,10 @@ and artifact pins in `versions.lock.json` and version and digest pins in
 [Development and offline checks](development.md)
 
 ```sh
-docker buildx build --load -t truenas-chatgpt-bridge:upgrade-001 .
+docker buildx build --load -t truenas-chatgpt-bridge:mcp-1.0.1-candidate .
 python3 -m unittest discover -s tests -v
-BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:upgrade-001 python3 tests/integration.py
-python3 scripts/bridge.py update --image truenas-chatgpt-bridge:upgrade-001
+BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:mcp-1.0.1-candidate python3 tests/integration.py
+python3 scripts/bridge.py update --image truenas-chatgpt-bridge:mcp-1.0.1-candidate
 ```
 
 Update requires a healthy running bridge. It preflights the candidate image and
@@ -83,32 +83,19 @@ The rollback record excludes credentials. Restore credentials and portal
 permissions separately. Reversing changes made through the plugin requires
 a separate operation in TrueNAS.
 
-## Upgrade from TrueNAS MCP 0.0.6
+## Upgrading to TrueNAS MCP 1.0.1
 
-Build and test a uniquely tagged 0.0.7 candidate first. Keep the existing
-deployment running with its original settings until the coordinated update;
-do not run setup on its mounted configuration to add the new username.
+TrueNAS MCP 1.0.1 requires TrueNAS 25.10 or later. Refresh the ChatGPT app's
+tool catalog after replacing the image, then run `status`, `probe`, and a
+read-only `system_info` call from ChatGPT. Destructive tools such as `stop_app`
+use MCP elicitation or a `confirmation_token` in the updated catalog.
+[Upstream tool behavior](https://github.com/truenas/truenas-mcp/blob/v1.0.1/docs/full-features.md)
 
-```sh
-docker buildx build --load -t truenas-chatgpt-bridge:mcp-0.0.7-candidate .
-BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:mcp-0.0.7-candidate python3 tests/integration.py
-python3 scripts/bridge.py update --image truenas-chatgpt-bridge:mcp-0.0.7-candidate
-```
-
-Update asks locally for the **TrueNAS username that owns the existing API key**
-when it is missing from the old settings. No key needs to be entered again.
-`--api-user USERNAME` is also available for this non-secret setting. The candidate
-uses `/api/current` and requires TrueNAS 25.04+. The preflight checks files and
-TLS without authenticating; health after replacement verifies the NAS read and
-tunnel polling. Refresh the ChatGPT tool catalog and test `system_info` again.
-Some upstream destructive operations now require `confirm: true` and otherwise
-return a preview; query and management tools remain available according to NAS
-permissions. The upstream optional read-only/allow/deny flags are not currently
-part of this bridge's configuration.
-
-If the candidate fails, use `rollback` from this new checkout. It stops the
-candidate before restoring both the original image and the old settings schema.
-Do not switch back to the old scripts before restoring the configuration.
+When upgrading from MCP 0.0.6, keep the existing settings until the update.
+The update prompts locally for the **TrueNAS username that owns the existing
+API key** if it is missing. You can also pass `--api-user USERNAME`.
+Run `rollback` from the new checkout so it can restore the original image and
+settings schema together.
 
 ## Coordinated cutover
 

@@ -15,8 +15,8 @@ tunnel ID, including when moving between hosts.
    separately from the certificate the bridge sees. TrueNAS can revoke keys
    presented over an unencrypted connection.
 
-TrueNAS MCP 0.0.7 requires TrueNAS 25.04+ and authenticates with the key and its
-owner's username. [Pinned TrueNAS MCP source](https://github.com/truenas/truenas-mcp/tree/v0.0.7)
+TrueNAS MCP 1.0.1 requires TrueNAS 25.10+ and authenticates with the key and its
+owner's username. [Pinned TrueNAS MCP source](https://github.com/truenas/truenas-mcp/tree/v1.0.1)
 
 ## Create the tunnel
 
@@ -30,7 +30,7 @@ owner's username. [Pinned TrueNAS MCP source](https://github.com/truenas/truenas
 
 [Platform tunnel settings](https://platform.openai.com/settings/organization/tunnels) ·
 [Secure MCP Tunnel guide](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) ·
-[Pinned client onboarding](https://github.com/openai/tunnel-client/blob/v0.0.18/docs/onboarding.md)
+[Pinned client onboarding](https://github.com/openai/tunnel-client/blob/v0.0.21/docs/onboarding.md)
 
 ## Configure the host
 

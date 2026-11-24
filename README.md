@@ -15,7 +15,7 @@ permissions, and tool requests and results pass through OpenAI.
 
 **Requirements**
 
-- TrueNAS **25.04+** with a hostname or IP reachable from the bridge over verified TLS.
+- TrueNAS **25.10+** with a hostname or IP reachable from the bridge over verified TLS.
 - Linux with Git, Python 3.11+, Docker Engine, Compose v2, Buildx, and outbound HTTPS to OpenAI.
 - An OpenAI Platform organization and a ChatGPT workspace that allows custom MCP plugins.
 
@@ -61,6 +61,6 @@ permissions, and tool requests and results pass through OpenAI.
 [Architecture](docs/architecture.md) · [Verification](docs/verification.md) ·
 [Development](docs/development.md) · [Licensing](docs/licensing.md)
 
-Pinned components are TrueNAS MCP **0.0.7** (upstream research preview) and
-OpenAI tunnel-client **0.0.18**. See the [verification record](docs/verification.md)
+Pinned components are TrueNAS MCP **1.0.1** (upstream early access) and
+OpenAI tunnel-client **0.0.21**. See the [verification record](docs/verification.md)
 for tested platforms and the [license and notices](docs/licensing.md) for provenance.

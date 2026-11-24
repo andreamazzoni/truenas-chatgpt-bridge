@@ -7,10 +7,10 @@ marked bridge code and uses the upstream TrueNAS client package.
 
 | Component | Pinned source | License and retained material |
 | --- | --- | --- |
-| TrueNAS MCP 0.0.7 | [e5a2d27f](https://github.com/truenas/truenas-mcp/tree/e5a2d27fe61006847f1e2715d6349cedef0089df) | GPLv3, `licenses/truenas-mcp-GPL-3.0.txt`; full source and vendored dependency sources/licenses in image |
-| OpenAI tunnel-client 0.0.18 | [274a5588](https://github.com/openai/tunnel-client/tree/274a5588414819f063d27100a4fb1096aae3830f) | Apache-2.0, license and NOTICE retained in repo and image; release dependency license inventory and SPDX SBOM retained |
-| Go toolchain | 1.27.3 official image, locked index digest | Build-time only; source build requires the documented Go compiler |
-| Python/Debian runtime | 3.13.13 slim-bookworm official image, locked index digest | Their own and installed package licenses remain in the base image |
+| TrueNAS MCP 1.0.1 | [b01f690](https://github.com/truenas/truenas-mcp/tree/b01f69021991d587bc4ff46a30eb6fe6d3797c40) | GPLv3, `licenses/truenas-mcp-GPL-3.0.txt`, with full source and vendored dependency sources and licenses in the image |
+| OpenAI tunnel-client 0.0.21 | [714f2d6](https://github.com/openai/tunnel-client/tree/714f2d67844b660af25754f1d19b0360b346b13b) | Apache-2.0, with the license and NOTICE retained in the repo and image and the dependency license inventory and SPDX SBOM in the image |
+| Go toolchain | 1.27.4 official image, locked index digest | Required to build the TrueNAS-based binaries |
+| Python/Debian runtime | 3.13.18 slim-bookworm official image, locked index digest | Python and installed package licenses remain in the base image |
 
 TrueNAS source is downloaded using an immutable commit and a checked SHA-256.
 Go dependencies are checked against upstream `go.sum`, verified, then vendored.

@@ -4,9 +4,27 @@ The table below separates isolated build and fixture results from the
 operator-reported ChatGPT test. For a new installation, verify the plugin
 with a read-only call from your workspace. [Connection checks](operations.md#check-the-connection)
 
-## Current sources: TrueNAS MCP 0.0.7 (2026-10-28)
+## TrueNAS MCP 1.0.1 (2026-11-24)
 
-Pinned components are TrueNAS MCP 0.0.7 at
+The candidate uses TrueNAS MCP 1.0.1, tunnel-client 0.0.21, Go 1.27.4 and
+Python 3.13.18. The fixture reports TrueNAS 25.10.8 and exercises the
+official client's authenticated `system.info` over verified TLS.
+
+| Check | Result |
+| --- | --- |
+| Compose configuration and unit tests | Compose validation and all 43 unit tests passed |
+| ARM64 runtime | MCP initialization, tool discovery, read-only `system_info`, tunnel polling, restart and shutdown passed in isolation |
+| AMD64 image | Cross-build completed and image metadata confirmed `linux/amd64` and non-root `1000:1000` |
+| Updated catalog and version check | The fixture verified `confirmation_token` for `stop_app` and the probe refused a simulated TrueNAS 25.04.2 |
+| Update and rollback | Upgrades from retained 0.0.7 and 0.0.6 images passed. Rollback restored the exact previous image and settings in both cases |
+| Build audit | Tracked paths, pins, non-root image configuration and ignored canary exclusion passed |
+| Live acceptance | The operator reported a successful upgrade, bridge status and NAS probe, and a read-only `system_info` call from ChatGPT |
+
+The AMD64 checks cover image construction and metadata.
+
+## TrueNAS MCP 0.0.7 (2026-10-28)
+
+The tested components were TrueNAS MCP 0.0.7 at
 `e5a2d27fe61006847f1e2715d6349cedef0089df`, OpenAI tunnel-client 0.0.18 and
 Go 1.27.3. Source/artifact checksums and multi-architecture base image digests
 are recorded in `versions.lock.json` and `Dockerfile`.
@@ -34,7 +52,8 @@ or compatibility with every TrueNAS release. The automated fixtures did not
 contact real services or change real credentials. Real-service rollback was
 not separately reported; its image/configuration recovery was verified offline.
 
-Reproduce the migration test with separately retained local images:
+Reproduce this historical migration test from the matching 0.0.7 checkout
+with separately retained local images:
 
 ```sh
 BRIDGE_TEST_IMAGE=truenas-chatgpt-bridge:mcp-0.0.7-candidate BRIDGE_TEST_LEGACY_IMAGE=truenas-chatgpt-bridge:probe-race-fix-98452e5 python3 tests/integration.py

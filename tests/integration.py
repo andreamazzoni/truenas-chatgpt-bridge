@@ -30,6 +30,8 @@ def run(args, **kw):
 def main():
     image = os.environ.get("BRIDGE_TEST_IMAGE", "truenas-chatgpt-bridge:0.1.0")
     legacy_image = os.environ.get("BRIDGE_TEST_LEGACY_IMAGE")
+    starting_image = legacy_image or os.environ.get("BRIDGE_TEST_PREVIOUS_IMAGE") or image
+    mcp_version = json.loads((ROOT / "versions.lock.json").read_text())["truenas"]["version"]
     token = uuid.uuid4().hex
     with tempfile.TemporaryDirectory(prefix="bridge-offline-") as tmp:
         folder = Path(tmp)
@@ -46,7 +48,7 @@ def main():
         if legacy_image:
             del cfg["truenas_api_user"]
         (folder / "config/local/settings.json").write_text(json.dumps(cfg))
-        (folder / ".env").write_text(f"BRIDGE_IMAGE={legacy_image or image}\nBRIDGE_UID={os.getuid()}\nBRIDGE_GID={os.getgid()}\n")
+        (folder / ".env").write_text(f"BRIDGE_IMAGE={starting_image}\nBRIDGE_UID={os.getuid()}\nBRIDGE_GID={os.getgid()}\n")
         # Same production hardening/secrets/health, with a test entrypoint and
         # internal-only network. No endpoint can reach OpenAI or the real NAS.
         source = (ROOT / "compose.yaml").read_text()
@@ -100,6 +102,18 @@ def main():
             assert migrated["truenas_api_user"] == "fixture-user"
             # The new official stdio server must work with JSON-RPC login.
             ops.compose("exec", "-T", "bridge", "test", "-f", "/tmp/stdio-verified")
+            version = ops.compose("exec", "-T", "bridge", "truenas-mcp", "--version", capture=True)
+            assert version.stdout.strip() == f"truenas-mcp version {mcp_version}"
+            ops.compose("exec", "-T", "bridge", "sh", "-c",
+                        "echo TrueNAS-SCALE-25.04.2 > /tmp/fixture-nas-version")
+            try:
+                rejected = ops.compose("exec", "-T", "bridge", "python", "/opt/bridge/runtime.py",
+                                       "probe", capture=True, check=False)
+                assert rejected.returncode == 1
+                assert json.loads(rejected.stdout)["nas_probe"]["ok"] is False
+            finally:
+                ops.compose("exec", "-T", "bridge", "rm", "/tmp/fixture-nas-version")
+            print("PASS: current probe rejects a NAS older than TrueNAS 25.10")
             sys.argv = ["bridge.py", "rollback"]
             ops.main()
             assert ops.active_image() == previous
@@ -108,7 +122,7 @@ def main():
             assert "BRIDGE_IMAGE=" + previous in (folder / ".env").read_text()
             print("PASS: candidate replacement and rollback to retained exact image")
             if legacy_image:
-                print("PASS: real 0.0.6 -> 0.0.7 migration and rollback restore both image and legacy configuration")
+                print("PASS: migration and rollback restored the legacy image and settings schema")
             logs = ops.compose("logs", "--no-color", capture=True).stdout
             assert token not in logs, "Fixture credential appeared in logs"
             assert token not in json.dumps(before["Config"]), "Fixture credential appeared in container configuration"

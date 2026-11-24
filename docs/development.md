@@ -2,8 +2,8 @@
 
 For installation and daily use, start with the [quick start](../README.md).
 
-Stable inputs are pinned in `versions.lock.json` and `Dockerfile`: tunnel-client
-0.0.18, TrueNAS MCP 0.0.7, Go 1.27.3 and Python 3.13.13, including upstream artifact
+The tunnel-client 0.0.21, TrueNAS MCP 1.0.1, Go 1.27.4 and Python 3.13.18 inputs
+are pinned in `versions.lock.json` and `Dockerfile`, including upstream artifact
 checksums and base image digests. TrueNAS MCP is built from source. Upstream code
 is kept unchanged, with a small bridge probe added alongside it.
 
@@ -33,8 +33,8 @@ the AMD64 runtime has not yet been tested. Pinned inputs and stripped Go build
 paths/IDs help repeatability; OCI exporter timestamps and attestations can still
 produce different image digests across independent builds.
 
-To verify migration from a retained, previously tested 0.0.6 image, set
-`BRIDGE_TEST_LEGACY_IMAGE` as well as the new `BRIDGE_TEST_IMAGE` when running
-`tests/integration.py`. The fixture accepts both NAS protocols and checks that
-rollback restores the legacy settings schema along with the old image. Both
-images must already exist locally; no live deployment is used.
+To test with a retained 0.0.7 image, set `BRIDGE_TEST_PREVIOUS_IMAGE` alongside
+`BRIDGE_TEST_IMAGE` before running `tests/integration.py`. For a retained
+0.0.6 image, use `BRIDGE_TEST_LEGACY_IMAGE` for the old image instead.
+The fixture accepts both NAS protocols and checks that rollback restores the
+original settings and the old image. Both images must already exist locally.

@@ -9,9 +9,9 @@ ChatGPT → OpenAI Secure MCP Tunnel
 
 The official tunnel client starts the official TrueNAS MCP server on demand
 over stdio. A small wrapper verifies TLS and execs the unmodified MCP binary.
-TrueNAS MCP 0.0.7 connects to `/api/current` using JSON-RPC 2.0 and
+TrueNAS MCP 1.0.1 connects to `/api/current` using JSON-RPC 2.0 and
 `auth.login_ex`, with the API key and its owner's username. It requires
-TrueNAS 25.04+. [Tested platforms and releases](verification.md)
+TrueNAS 25.10+. [Tested platforms and releases](verification.md)
 
 The tunnel client reads the OpenAI runtime key from a mounted file. The
 wrapper supplies the TrueNAS key as `TRUENAS_API_KEY` only to the MCP child.
@@ -45,7 +45,7 @@ private because they can contain hostnames and tunnel identifiers.
 | `process_live` | The tunnel client's local liveness endpoint responds. |
 | `startup_ready` | The tunnel client reports startup readiness. The stdio server starts on demand. |
 | `tunnel_ready` | Liveness, startup readiness, and a successful OpenAI poll within 120 seconds. |
-| `nas_probe.ok` | A separate connection using the official TrueNAS client completed `system.info` over verified TLS. |
+| `nas_probe.ok` | A separate connection using the official TrueNAS client completed `system.info` over verified TLS and reported a supported TrueNAS version. |
 
 Docker health requires tunnel readiness and a fresh NAS read, and checks them
 every 60 seconds after startup. The bounded probe prints no NAS data. It uses

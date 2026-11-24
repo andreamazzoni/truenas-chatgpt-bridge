@@ -1,27 +1,27 @@
 {
   "schema": 1,
   "images": {
-    "python": "python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f",
-    "go": "golang:1.27.3-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9"
+    "python": "python:3.13.18-slim-bookworm@sha256:f0fa218d5b06f9b9235024fa061cde2cb141f726de52134471053d2d9b5324a3",
+    "go": "golang:1.27.4-bookworm@sha256:b754301872c53d3dff666ec39e3fae971dc6f5ecd5a9b01fdefabbebb0f59901"
   },
   "tunnel": {
-    "version": "0.0.18",
-    "commit": "274a5588414819f063d27100a4fb1096aae3830f",
+    "version": "0.0.21",
+    "commit": "714f2d67844b660af25754f1d19b0360b346b13b",
     "artifacts": {
       "arm64": {
-        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.18/tunnel-client-v0.0.18-linux-arm64.zip",
-        "sha256": "a5f3d70efc75f5e66ab5c67c44d272aa80b2736f93f875f165140517750ec035"
+        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.21/tunnel-client-v0.0.21-linux-arm64.zip",
+        "sha256": "78a5202e0737199208a0c3e8f7c123805634546b0a587b83303b973b7f56aca6"
       },
       "amd64": {
-        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.18/tunnel-client-v0.0.18-linux-amd64.zip",
-        "sha256": "3c82307316acd93c88a384b62af1d81d3f4cb0efa975f9c0bfaef922866a04c4"
+        "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.21/tunnel-client-v0.0.21-linux-amd64.zip",
+        "sha256": "9e91a539e3ae1c436d499f216a1d7514b3c86cc7779032f41b2a05821d74b03a"
       }
     }
   },
   "truenas": {
-    "version": "0.0.7",
-    "commit": "e5a2d27fe61006847f1e2715d6349cedef0089df",
-    "url": "https://codeload.github.com/truenas/truenas-mcp/tar.gz/e5a2d27fe61006847f1e2715d6349cedef0089df",
-    "sha256": "a24b909c623fd70fc0dc067394a8da36912dc8e87fdcb961d40f42b029595fd0"
+    "version": "1.0.1",
+    "commit": "b01f69021991d587bc4ff46a30eb6fe6d3797c40",
+    "url": "https://codeload.github.com/truenas/truenas-mcp/tar.gz/b01f69021991d587bc4ff46a30eb6fe6d3797c40",
+    "sha256": "a1738ab2583d9f9eb30d3d3d0fda43f213bdb3d9720d59d3195b6b0d1764c234"
   }
 }
